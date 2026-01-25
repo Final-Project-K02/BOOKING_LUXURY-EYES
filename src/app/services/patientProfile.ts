@@ -1,5 +1,5 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import type { PatientInput } from "../../components/AddPatientModal";
+import type { PatientInput } from "../../components/BookingAppointment/AddPatientModal";
 import type {
   CreatePatientResponse,
   PatientData,
@@ -25,7 +25,7 @@ export const patientProfileApi = createApi({
           body,
         }),
         invalidatesTags: ["PatientProfiles"],
-      }
+      },
     ),
   }),
 });
