@@ -11,13 +11,16 @@ import { useState } from "react";
 import logo from "../assets/imgs/logoEye.png";
 import { useAppDispatch } from "../app/hook";
 import { logout } from "../app/features/authSlice";
-import RegisterPage from "../pages/auth/RegisterPage";
+import AuthModal from "../components/auth/AuthModal";
 
 const HeaderClient = () => {
   const [drawerVisible, setDrawerVisible] = useState(false);
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const [registerModalOpen, setRegisterModalOpen] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<"login" | "register">(
+    "login",
+  );
 
   const user = JSON.parse(localStorage.getItem("user") || "null");
   const isLoggedIn = !!user;
@@ -32,16 +35,21 @@ const HeaderClient = () => {
 
   const menuItems: MenuProps["items"] = [];
 
+  const openAuthModal = (mode: "login" | "register") => {
+    setAuthModalMode(mode);
+    setAuthModalOpen(true);
+  };
+
   const guestMenu: MenuProps["items"] = [
     {
       key: "login",
       label: "Đăng nhập",
-      onClick: () => navigate("/auth/login"),
+      onClick: () => openAuthModal("login"),
     },
     {
       key: "register",
       label: "Đăng ký",
-      onClick: () => setRegisterModalOpen(true),
+      onClick: () => openAuthModal("register"),
     },
   ];
 
@@ -144,7 +152,7 @@ const HeaderClient = () => {
                 type="primary"
                 block
                 onClick={() => {
-                  navigate("/auth/login");
+                  openAuthModal("login");
                   setDrawerVisible(false);
                 }}
               >
@@ -154,7 +162,7 @@ const HeaderClient = () => {
               <Button
                 block
                 onClick={() => {
-                  setRegisterModalOpen(true);
+                  openAuthModal("register");
                   setDrawerVisible(false);
                 }}
               >
@@ -182,10 +190,11 @@ const HeaderClient = () => {
         </div>
       </Drawer>
 
-      {/* Register Modal */}
-      <RegisterPage
-        open={registerModalOpen}
-        onClose={() => setRegisterModalOpen(false)}
+      {/* Auth Modal */}
+      <AuthModal
+        open={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        mode={authModalMode}
       />
     </>
   );
