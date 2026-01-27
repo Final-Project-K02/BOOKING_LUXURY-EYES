@@ -30,11 +30,11 @@ export const useAuthHandler = () => {
 
   const handleLogin = async (values: LoginPayload): Promise<boolean> => {
     try {
+      console.log(values);
       const res = await authService.login({
         email: values.email,
         password: values.password,
       });
-
       // Xử lý response không có `success` field
       const data = res.data.data || res.data;
       const { user, accessToken } = data;

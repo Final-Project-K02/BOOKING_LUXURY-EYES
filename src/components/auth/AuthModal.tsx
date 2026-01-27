@@ -26,12 +26,12 @@ const getEmailRules = () => [
   { type: "email" as const, message: "Email không hợp lệ" },
 ];
 
-const getPasswordRules = (isRegister: boolean) => {
+const getPasswordRules = () => {
   const baseRules = [{ required: true, message: "Vui lòng nhập mật khẩu" }];
 
-  if (!isRegister) {
-    return baseRules;
-  }
+  // if (!isRegister) {
+  //   return baseRules;
+  // }
 
   return [
     ...baseRules,
@@ -188,7 +188,7 @@ const AuthModal = ({ open, onClose, mode: initialMode }: AuthModalProps) => {
           <Form.Item
             name="password"
             label="Mật khẩu"
-            rules={getPasswordRules(isRegisterMode)}
+            rules={getPasswordRules()}
           >
             <Input.Password
               size="large"

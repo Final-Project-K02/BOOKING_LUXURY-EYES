@@ -8,13 +8,21 @@ import {
   TeamOutlined,
 } from "@ant-design/icons";
 import { Button, Card } from "antd";
-import banner from "../../assets/imgs/banner.png";
-import { Link } from "react-router-dom";
-import { useGetDoctorsQuery } from "../../app/services/doctorApi";
-import type { Doctor } from "../../types/Doctor";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAppSelector } from "../../app/hook";
+import { useGetDoctorsQuery } from "../../app/services/doctorApi";
+import banner from "../../assets/imgs/banner.png";
+import AuthModal from "../../components/auth/AuthModal";
+import type { Doctor } from "../../types/Doctor";
 
 const HomePage = () => {
+  const navigate = useNavigate();
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<"login" | "register">(
+    "login",
+  );
+
   const isAuthenticated =
     useAppSelector((state) => state.auth.accessToken) ||
     localStorage.getItem("accessToken");
@@ -22,20 +30,6 @@ const HomePage = () => {
   const { data } = useGetDoctorsQuery();
 
   const doctors: Doctor[] = data?.data ?? [];
-  // const services = [
-  //   {
-  //     icon: <CalendarOutlined className="text-4xl" />,
-  //     title: "Đặt khám online",
-  //     desc: "Đặt lịch nhanh chóng, tiện lợi",
-  //     link: "/dat-lich-kham",
-  //   },
-  //   {
-  //     icon: <MedicineBoxOutlined className="text-4xl" />,
-  //     title: "Lịch khám",
-  //     desc: "Quản lý lịch khám đã đặt",
-  //     link: "/lich-kham",
-  //   },
-  // ];
 
   const features = [
     {
@@ -60,59 +54,43 @@ const HomePage = () => {
     },
   ];
 
-  // {[
-  //         {
-  //           name: "BS. Nguyễn Văn A",
-  //           title: "Trưởng khoa Nhãn khoa",
-  //           specialty: "Chuyên khoa Mắt",
-  //           experience: "15+ năm kinh nghiệm",
-  //           img: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=faces",
-  //           achievements: ["Phẫu thuật Lasik", "Điều trị Glaucoma"],
-  //         },
-  //         {
-  //           name: "BS. Trần Thị B",
-  //           title: "Phó khoa Nhãn khoa",
-  //           specialty: "Chuyên khoa Võng mạc",
-  //           experience: "12+ năm kinh nghiệm",
-  //           img: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&h=400&fit=crop&crop=faces",
-  //           achievements: ["Phẫu thuật Cataract", "Bệnh lý võng mạc"],
-  //         },
-  //         {
-  //           name: "BS. Lê Văn C",
-  //           title: "Bác sĩ Chuyên khoa II",
-  //           specialty: "Chuyên khoa Khúc xạ",
-  //           experience: "10+ năm kinh nghiệm",
-  //           img: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&h=400&fit=crop&crop=faces",
-  //           achievements: ["Điều chỉnh khúc xạ", "Cận thị tiến triển"],
-  //         },
-  //       ]
-
   const news = [
     {
       title: "Thông báo lịch làm việc Tết Nguyên đán 2025",
       date: "15/11/2024",
       img: "https://images.unsplash.com/photo-1584820927498-cfe5211fd8bf?w=400&h=250&fit=crop",
-      // link: "/news/1",
     },
     {
       title: "Chương trình khám mắt tổng quát cuối năm",
       date: "10/11/2024",
       img: "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=400&h=250&fit=crop",
-      // link: "/news/2",
     },
     {
       title: "Hội thảo chăm sóc sức khỏe đôi mắt",
       date: "05/11/2024",
       img: "https://images.unsplash.com/photo-1579684453423-f84349ef60b0?w=400&h=250&fit=crop",
-      // link: "/news/3",
     },
   ];
+
   const experiencedDoctors = doctors
     .map((doc) => ({
       ...doc,
       experience_year: Number(doc.experience_year),
     }))
     .filter((doc) => doc.experience_year >= 10);
+
+  // ===== HÀM XỬ LÝ ĐIỀU HƯỚNG CÓ KIỂM TRA ĐĂNG NHẬP =====
+  const handleNavigateWithAuth = (path: string) => {
+    if (!isAuthenticated) {
+      // Nếu chưa đăng nhập: hiện modal đăng nhập và ở trang chủ
+      setAuthModalMode("login");
+      setAuthModalOpen(true);
+    } else {
+      // Nếu đã đăng nhập: chuyển hướng bình thường
+      navigate(path);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section - Modern Layout */}
@@ -140,15 +118,14 @@ const HomePage = () => {
               </p>
 
               <div className="flex flex-wrap gap-4 pt-4">
-                <Link to={isAuthenticated ? "/dat-lich-kham" : "/auth/login"}>
-                  <Button
-                    type="primary"
-                    size="large"
-                    className="h-12 px-8 text-base font-medium shadow-lg hover:shadow-xl transition-all"
-                  >
-                    Đặt lịch ngay
-                  </Button>
-                </Link>
+                <Button
+                  type="primary"
+                  size="large"
+                  onClick={() => handleNavigateWithAuth("/dat-lich-kham")}
+                  className="h-12 px-8 text-base font-medium shadow-lg hover:shadow-xl transition-all"
+                >
+                  Đặt lịch ngay
+                </Button>
                 <Button
                   size="large"
                   className="h-12 px-8 text-base font-medium"
@@ -193,7 +170,10 @@ const HomePage = () => {
       <div className="container mx-auto px-4 -mt-12 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
           {/* Đặt khám online */}
-          <Link to={isAuthenticated ? "/dat-lich-kham" : "/auth/login"}>
+          <div
+            onClick={() => handleNavigateWithAuth("/dat-lich-kham")}
+            className="cursor-pointer"
+          >
             <Card className="h-full shadow-lg hover:shadow-2xl transition-all duration-300 border-0 bg-white group hover:-translate-y-2">
               <div className="flex items-center gap-6 p-4">
                 <div className="flex-shrink-0 w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center text-white group-hover:scale-110 transition-transform">
@@ -210,10 +190,13 @@ const HomePage = () => {
                 <RightOutlined className="text-gray-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
               </div>
             </Card>
-          </Link>
+          </div>
 
           {/* Lịch khám */}
-          <Link to={isAuthenticated ? "/lich-kham" : "/auth/login"}>
+          <div
+            onClick={() => handleNavigateWithAuth("/lich-kham")}
+            className="cursor-pointer"
+          >
             <Card className="h-full shadow-lg hover:shadow-2xl transition-all duration-300 border-0 bg-white group hover:-translate-y-2">
               <div className="flex items-center gap-6 p-4">
                 <div className="flex-shrink-0 w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center text-white group-hover:scale-110 transition-transform">
@@ -228,7 +211,7 @@ const HomePage = () => {
                 <RightOutlined className="text-gray-400 group-hover:text-green-600 group-hover:translate-x-1 transition-all" />
               </div>
             </Card>
-          </Link>
+          </div>
         </div>
       </div>
 
@@ -384,17 +367,6 @@ const HomePage = () => {
             </div>
           ))}
         </div>
-
-        {/* <div className="text-center mt-12">
-          <Button
-            size="large"
-            onClick={() => (window.location.href = "/doctors")}
-            className="h-12 px-8"
-          >
-            Xem tất cả bác sĩ
-            <RightOutlined className="ml-2" />
-          </Button>
-        </div> */}
       </div>
 
       {/* News Section */}
@@ -411,7 +383,6 @@ const HomePage = () => {
 
           <div className="grid md:grid-cols-3 gap-8">
             {news.map((item, idx) => (
-              // <a href={item.link} key={idx} className="group block">
               <Card
                 key={idx}
                 className="h-full border-0 shadow-md hover:shadow-2xl transition-all duration-300 overflow-hidden"
@@ -440,33 +411,17 @@ const HomePage = () => {
                   </div>
                 </div>
               </Card>
-              // </a>
             ))}
           </div>
         </div>
       </div>
 
-      {/* CTA Section */}
-      {/* <div className="bg-gradient-to-r from-blue-600 to-blue-800 py-20">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
-            Sẵn sàng chăm sóc sức khỏe của bạn?
-          </h2>
-          <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
-            Đặt lịch khám ngay hôm nay để được tư vấn và chăm sóc bởi đội ngũ
-            chuyên gia
-          </p>
-          <Button
-            size="large"
-            className="h-14 px-10 text-lg font-medium bg-white text-blue-600 border-0 hover:bg-gray-100"
-            onClick={() =>
-              (window.location.href = isAuth ? "/dat-lich-kham" : "/auth/login")
-            }
-          >
-            Đặt lịch khám ngay
-          </Button>
-        </div>
-      </div> */}
+      {/* Auth Modal */}
+      <AuthModal
+        open={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        mode={authModalMode}
+      />
 
       <style>{`
         @keyframes fade-in {

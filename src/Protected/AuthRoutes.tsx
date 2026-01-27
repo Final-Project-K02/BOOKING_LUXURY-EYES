@@ -8,12 +8,11 @@ interface ProtectedRouteProps {
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, accessToken, isAuthenticated } = useAppSelector(
-    (state) => state.auth
+    (state) => state.auth,
   );
   if (!user || !accessToken || !isAuthenticated) {
-    return <Navigate to="/auth/login" replace />;
+    return <Navigate to="/" replace />;
   }
-
 
   //ts
   return children;

@@ -30,7 +30,7 @@ const HeaderClient = () => {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("user");
     message.success("Đăng xuất thành công!");
-    navigate("/auth/login");
+    navigate("/");
   };
 
   const menuItems: MenuProps["items"] = [];
