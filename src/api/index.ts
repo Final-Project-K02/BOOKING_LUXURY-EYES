@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "https://api-class-o1lo.onrender.com/api/luxury_eyes",
+  baseURL: "http://localhost:8888/api",
 });
 
 export default api;
