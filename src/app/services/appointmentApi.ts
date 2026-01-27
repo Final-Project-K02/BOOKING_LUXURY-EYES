@@ -10,11 +10,12 @@ import type { RootState } from "../store";
 export const appointmentApi = createApi({
   reducerPath: "appointmentApi",
   baseQuery: fetchBaseQuery({
-    baseUrl: "https://api-class-o1lo.onrender.com/api/luxury_eyes/",
+    baseUrl: "http://localhost:8888/api",
     prepareHeaders: (headers, { getState }) => {
       const token =
         (getState() as RootState).auth.accessToken ||
         localStorage.getItem("accessToken");
+
       if (token) {
         headers.set("authorization", `Bearer ${token}`);
       }
@@ -23,30 +24,44 @@ export const appointmentApi = createApi({
   }),
   tagTypes: ["Appointments", "AppointmentScheduleId", "ScheduleId"],
   endpoints: (builder) => ({
+    // 🔹 Lấy lịch hẹn của user
     getAppointments: builder.query<BookingResponse, string>({
-      query: (userId) => `appointments/?userId=${userId}`,
+      query: (userId) => `appointments?userId=${userId}`,
       providesTags: ["Appointments"],
     }),
 
+    // 🔹 Lấy lịch theo schedule
     getBookingByScheduleId: builder.query<BookingResponse, string>({
       query: (scheduleId) => `appointments?scheduleId=${scheduleId}`,
-      providesTags: (_result, _error, scheduleId) => [
+      providesTags: (_r, _e, scheduleId) => [
         { type: "AppointmentScheduleId", id: scheduleId },
       ],
     }),
-    createBooking: builder.mutation<void, BookingPayload>({
-      query: (bookingData) => ({
-        url: "/appointments",
-        method: "POST",
-        body: bookingData,
-      }),
-      invalidatesTags: (_result, _error, arg) => [
-        "Appointments",
-        { type: "AppointmentScheduleId", id: arg.scheduleId },
-        { type: "ScheduleId", id: arg.doctor.id },
+
+    // 🔹 Lấy lịch theo bác sĩ ✅ (MỚI)
+    getAppointmentsByDoctor: builder.query<BookingResponse, string>({
+      query: (doctorId) => `appointments/doctor?doctorId=${doctorId}`,
+      providesTags: (_r, _e, doctorId) => [
+        { type: "ScheduleId", id: doctorId },
       ],
     }),
 
+    // 🔹 Đặt lịch
+   createBooking: builder.mutation<void, BookingPayload>({
+  query: (bookingData) => ({
+    url: "/appointments",
+    method: "POST",
+    body: bookingData,
+  }),
+  invalidatesTags: (_r, _e, arg) => [
+    "Appointments",
+    { type: "AppointmentScheduleId", id: arg.scheduleId },
+    { type: "ScheduleId", id: arg.doctor.id },
+  ],
+}),
+
+
+    // 🔹 Huỷ lịch (người dùng)
     cancelAppointment: builder.mutation<
       Appointment,
       { id: string; reason: string; scheduleId: string }
@@ -62,6 +77,7 @@ export const appointmentApi = createApi({
       ],
     }),
 
+    // 🔹 Gửi yêu cầu huỷ (xác nhận)
     cancelAppointmentConfirm: builder.mutation<
       Appointment,
       { id: string; reason: string; scheduleId: string }
@@ -82,6 +98,7 @@ export const appointmentApi = createApi({
 export const {
   useGetAppointmentsQuery,
   useGetBookingByScheduleIdQuery,
+  useGetAppointmentsByDoctorQuery,
   useCreateBookingMutation,
   useCancelAppointmentMutation,
   useCancelAppointmentConfirmMutation,
