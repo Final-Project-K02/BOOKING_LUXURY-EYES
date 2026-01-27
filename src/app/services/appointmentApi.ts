@@ -5,11 +5,21 @@ import type {
   BookingPayload,
   BookingResponse,
 } from "../../types/Booking";
+import type { RootState } from "../store";
 
 export const appointmentApi = createApi({
   reducerPath: "appointmentApi",
   baseQuery: fetchBaseQuery({
     baseUrl: "https://api-class-o1lo.onrender.com/api/luxury_eyes/",
+    prepareHeaders: (headers, { getState }) => {
+      const token =
+        (getState() as RootState).auth.accessToken ||
+        localStorage.getItem("accessToken");
+      if (token) {
+        headers.set("authorization", `Bearer ${token}`);
+      }
+      return headers;
+    },
   }),
   tagTypes: ["Appointments", "AppointmentScheduleId", "ScheduleId"],
   endpoints: (builder) => ({

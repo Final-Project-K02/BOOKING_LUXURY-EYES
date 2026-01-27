@@ -28,9 +28,9 @@ import {
   useGetScheduleDoctorIdQuery,
   useGetSchedulesQuery,
 } from "../../app/services/scheduleApi";
-import AddPatientModal from "../../components/AddPatientModal";
-import DoctorList from "../../components/DoctorList";
-import TimeSlotPicker from "../../components/TimeSlotPicker";
+import AddPatientModal from "../../components/BookingAppointment/AddPatientModal";
+import DoctorList from "../../components/BookingAppointment/DoctorList";
+import TimeSlotPicker from "../../components/BookingAppointment/TimeSlotPicker";
 import { BLOCK_STATUSES } from "../../types/Booking";
 import type { Doctor } from "../../types/Doctor";
 import type {
@@ -67,7 +67,7 @@ const BookingAppointmentPage = () => {
   const { data: schedulesData } = useGetSchedulesQuery();
   const listSchedule: DoctorSchedule[] = useMemo(
     () => schedulesData?.data ?? [],
-    [schedulesData]
+    [schedulesData],
   );
   const { data: schedule } = useGetScheduleDoctorIdQuery(
     selectedDoctor?._id as string,
@@ -75,7 +75,7 @@ const BookingAppointmentPage = () => {
       skip: !selectedDoctor?._id,
       refetchOnFocus: true,
       refetchOnReconnect: true,
-    }
+    },
   );
   const scheduleDoctorId: DoctorSchedule[] = schedule?.data ?? [];
   const scheduleItem = scheduleDoctorId[0];
@@ -100,7 +100,7 @@ const BookingAppointmentPage = () => {
 
   const getBookingUserData = useMemo(
     () => getBookingUserId?.data ?? [],
-    [getBookingUserId]
+    [getBookingUserId],
   );
   const { data: getBookingBySlotId } = useGetBookingByScheduleIdQuery(
     scheduleItem?._id,
@@ -108,11 +108,11 @@ const BookingAppointmentPage = () => {
       skip: !scheduleItem?._id,
       refetchOnFocus: true,
       refetchOnReconnect: true,
-    }
+    },
   );
   const getBookingBySchedIdData = useMemo(
     () => getBookingBySlotId?.data ?? [],
-    [getBookingBySlotId]
+    [getBookingBySlotId],
   );
 
   const [symptoms, setSymptoms] = useState<string>("");
@@ -199,7 +199,7 @@ const BookingAppointmentPage = () => {
 
   //bắt dữ liệu thay đổi khi chọn ngày
   const handleRangeChange = (
-    dates: (Dayjs | null)[] | null
+    dates: (Dayjs | null)[] | null,
     // dateStrings: [string, string]
   ) => {
     if (dates && dates[0] && dates[1]) {
@@ -242,7 +242,7 @@ const BookingAppointmentPage = () => {
             if (slot.status !== "AVAILABLE") return false;
             const slotDate = slot.date.split("T")[0];
             return slotDate >= start && slotDate <= end;
-          }
+          },
         );
 
         return {
@@ -284,7 +284,7 @@ const BookingAppointmentPage = () => {
           (apm) =>
             dayjs(apm.dateTime).format("YYYY-MM-DD") === slotDate &&
             apm.time === slot.time &&
-            BLOCK_STATUSES.includes(apm.status)
+            BLOCK_STATUSES.includes(apm.status),
         );
 
         const disabled =
@@ -296,10 +296,10 @@ const BookingAppointmentPage = () => {
           disabledReason: doctorBlocked
             ? "Khung giờ đã được đặt"
             : userBlocked
-            ? "Bạn đã có lịch cùng khung giờ"
-            : slot.status !== "AVAILABLE"
-            ? "Khung giờ không khả dụng"
-            : undefined,
+              ? "Bạn đã có lịch cùng khung giờ"
+              : slot.status !== "AVAILABLE"
+                ? "Khung giờ không khả dụng"
+                : undefined,
         };
       });
   }, [scheduleItem?.timeSlots, getBookingUserData, getBookingBySchedIdData]);
