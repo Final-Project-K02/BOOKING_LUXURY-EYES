@@ -86,6 +86,11 @@ const AdminLayout: React.FC = () => {
               label: "Bác sĩ",
             },
             {
+              key: "/admin/user",
+              icon: <TeamOutlined />,
+              label: "Người dùng",
+            },
+            {
               key: "login",
               icon: <LogoutOutlined />,
               label: "Đăng xuất",

@@ -27,7 +27,6 @@ const STATUS_FLOW: Record<AppointmentStatus, AppointmentStatus[]> = {
   "REQUEST-CANCELED": ["CANCELED"],
 };
 
-/* ================== COMPONENT ================== */
 
 const AppointmentManagement = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);

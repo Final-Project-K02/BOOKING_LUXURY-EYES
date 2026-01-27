@@ -19,23 +19,55 @@ import {
   Table,
   Tag,
 } from "antd";
-import dayjs from "dayjs";
+import dayjs, { Dayjs } from "dayjs";
 import React, { useEffect, useState } from "react";
 import api from "../../api";
 
-/* ================== COMPONENT ================== */
+type AppointmentStatus = string;
+
+interface Doctor {
+  name?: string;
+  specialty?: string;
+}
+
+interface Patient {
+  fullName?: string;
+}
+
+interface AppointmentApi {
+  _id: string;
+  dateTime: string;
+  time: string;
+  status: AppointmentStatus;
+  doctor?: Doctor;
+  patient?: Patient;
+}
+
+interface TableAppointment {
+  key: string;
+  patient: string;
+  doctor: string;
+  time: string;
+  department: string;
+  status: AppointmentStatus;
+}
+
+interface UpcomingAppointment {
+  name: string;
+  time: string;
+  date: string;
+  doctor: string;
+}
 
 const DashBoardPage: React.FC = () => {
-  const [appointments, setAppointments] = useState<any[]>([]);
-  const [upcoming, setUpcoming] = useState<any[]>([]);
+  const [appointments, setAppointments] = useState<TableAppointment[]>([]);
+  const [upcoming, setUpcoming] = useState<UpcomingAppointment[]>([]);
   const [stats, setStats] = useState({
     todayAppointments: 0,
     newPatients: 0,
     doctors: 0,
     completedThisMonth: 0,
   });
-
-  /* ================== FETCH DATA ================== */
 
   const fetchDashboard = async () => {
     try {
@@ -45,49 +77,52 @@ const DashBoardPage: React.FC = () => {
         api.get("/patients"),
       ]);
 
-      const appointmentsData = appointmentRes.data.data || [];
+      const appointmentsData: AppointmentApi[] = appointmentRes.data.data || [];
       const doctorsData = doctorRes.data.data || [];
       const patientsData = patientRes.data.data || [];
 
       const today = dayjs().format("YYYY-MM-DD");
 
-      // ===== STATS =====
       setStats({
         todayAppointments: appointmentsData.filter(
-          (a: any) => dayjs(a.dateTime).format("YYYY-MM-DD") === today
+          (a) => dayjs(a.dateTime).format("YYYY-MM-DD") === today
         ).length,
         newPatients: patientsData.length,
         doctors: doctorsData.length,
         completedThisMonth: appointmentsData.filter(
-          (a: any) =>
-            a.status === "Completed" &&
-            dayjs(a.dateTime).isSame(dayjs(), "month")
+          (a) =>
+            a.status === "Completed" ||
+            (a.status === "COMPLETED" &&
+              dayjs(a.dateTime).isSame(dayjs(), "month"))
         ).length,
       });
 
-      // ===== TABLE RECENT =====
       setAppointments(
-        appointmentsData.slice(0, 5).map((a: any) => ({
+        appointmentsData.slice(0, 5).map((a) => ({
           key: a._id,
-          patient: a.patient?.fullName,
-          doctor: a.doctor?.name,
+          patient: a.patient?.fullName || "—",
+          doctor: a.doctor?.name || "—",
           time: `${a.time} - ${dayjs(a.dateTime).format("DD/MM/YYYY")}`,
-          department: a.doctor?.specialty,
+          department: a.doctor?.specialty || "—",
           status: a.status,
         }))
       );
 
-      // ===== UPCOMING =====
-      setUpcoming(
-        appointmentsData
-          .filter((a: any) => dayjs(a.dateTime).isAfter(dayjs()))
-          .slice(0, 5)
-          .map((a: any) => ({
-            name: a.patient?.fullName,
-            time: a.time,
-            doctor: a.doctor?.name,
-          }))
-      );
+     setUpcoming(
+  appointmentsData
+    .filter((a) => dayjs(a.dateTime).isAfter(dayjs()))
+    .sort((a, b) =>
+      dayjs(a.dateTime).valueOf() - dayjs(b.dateTime).valueOf()
+    )
+    .slice(0, 5)
+    .map((a) => ({
+      name: a.patient?.fullName || "—",
+      time: a.time,
+      date: dayjs(a.dateTime).format("DD/MM/YYYY"),
+      doctor: a.doctor?.name || "—",
+    }))
+);
+
     } catch {
       message.error("Không tải được dữ liệu dashboard");
     }
@@ -97,12 +132,10 @@ const DashBoardPage: React.FC = () => {
     fetchDashboard();
   }, []);
 
-  /* ================== TABLE ================== */
-
   const columns = [
     {
       title: "Bệnh nhân",
-      render: (_: any, r: any) => (
+      render: (_: unknown, r: TableAppointment) => (
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <Avatar icon={<UserOutlined />} />
           {r.patient}
@@ -115,23 +148,31 @@ const DashBoardPage: React.FC = () => {
     {
       title: "Trạng thái",
       dataIndex: "status",
-      render: (status: string) => {
-        const map: any = {
+      render: (status: AppointmentStatus) => {
+        const map: Record<string, { color: string; text: string }> = {
           Pending: { color: "orange", text: "Chờ xác nhận" },
           Confirmed: { color: "green", text: "Đã xác nhận" },
           Completed: { color: "blue", text: "Hoàn thành" },
           Cancelled: { color: "red", text: "Đã huỷ" },
+          CONFIRMED: { color: "green", text: "Đã xác nhận" },
+          COMPLETED: { color: "blue", text: "Hoàn thành" },
+          CANCELLED: { color: "red", text: "Đã huỷ" },
         };
-        return <Tag color={map[status]?.color}>{map[status]?.text}</Tag>;
+
+        const config = map[status] ?? {
+          color: "default",
+          text: status || "Không rõ",
+        };
+
+        return <Tag color={config.color}>{config.text}</Tag>;
       },
     },
   ];
 
-  /* ================== CALENDAR ================== */
-
-  const dateCellRender = (value: any) => {
+  const dateCellRender = (value: Dayjs) => {
     const count = appointments.filter(
-      (a) => dayjs(a.time.split(" - ")[1], "DD/MM/YYYY").date() === value.date()
+      (a) =>
+        dayjs(a.time.split(" - ")[1], "DD/MM/YYYY").date() === value.date()
     ).length;
 
     return count ? <Badge status="success" text={`${count} lịch hẹn`} /> : null;
@@ -139,7 +180,6 @@ const DashBoardPage: React.FC = () => {
 
   return (
     <>
-      {/* ===== STATISTIC ===== */}
       <Row gutter={16} style={{ marginBottom: 24 }}>
         <Col xs={24} md={12} lg={6}>
           <Card>
@@ -184,7 +224,6 @@ const DashBoardPage: React.FC = () => {
       </Row>
 
       <Row gutter={16}>
-        {/* ===== LEFT ===== */}
         <Col xs={24} lg={16}>
           <Card title="Lịch hẹn gần đây" style={{ marginBottom: 16 }}>
             <Table
@@ -201,7 +240,6 @@ const DashBoardPage: React.FC = () => {
           </Card>
         </Col>
 
-        {/* ===== RIGHT ===== */}
         <Col xs={24} lg={8}>
           <Card title="Lịch hẹn sắp tới" style={{ marginBottom: 16 }}>
             <List
@@ -214,7 +252,7 @@ const DashBoardPage: React.FC = () => {
                     description={
                       <>
                         <div>
-                          <ClockCircleOutlined /> {item.time}
+                          <ClockCircleOutlined /> {item.time} – {item.date}
                         </div>
                         <div>{item.doctor}</div>
                       </>

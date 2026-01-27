@@ -14,34 +14,33 @@ import type { User } from "../../types/User";
 const RegisterPage = () => {
   const nav = useNavigate();
 
-  // ---- HANDLE SUBMIT ----
-  const handleRegister = async (values: User) => {
-    try {
-      const payload = {
-        fullName: values.fullName,
-        dateOfBirth: values.dateOfBirth,
-        gender: values.gender,
-        identityCard: values.identityCard,
-        email: values.email,
-        phone: values.phone,
-        address: values.address,
-        password: values.password,
-      };
+ const handleRegister = async (values: User) => {
+  try {
+    const payload = {
+      fullName: values.fullName,
+      dateOfBirth: values.dateOfBirth,
+      gender: values.gender,
+      identityCard: values.identityCard,
+      email: values.email,
+      phone: values.phone,
+      address: values.address,
+      password: values.password,
+      role: "user",
+    };
 
-      const res = await api.post("/auth/register", payload);
+    const res = await api.post("/auth/register", payload);
 
-      if (res.data.success) {
-        alert("Đăng ký thành công!");
-        nav("/auth/login");
-      } else {
-        alert("Đăng ký thất bại: " + res.data.message);
-      }
-    } catch (error) {
-      console.error("Register Error:", error);
-      alert("Lỗi khi đăng ký!");
+    if (res.data.success) {
+      alert("Đăng ký thành công!");
+      nav("/auth/login");
+    } else {
+      alert("Đăng ký thất bại: " + res.data.message);
     }
-  };
-
+  } catch (error) {
+    console.error("Register Error:", error);
+    alert("Lỗi khi đăng ký!");
+  }
+};
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-4">
       <Card className="w-full max-w-2xl shadow-xl my-8">

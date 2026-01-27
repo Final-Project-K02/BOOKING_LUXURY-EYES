@@ -14,5 +14,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     return <Navigate to="/auth/login" replace />;
   }
 
+
+  //ts
   return children;
 }

@@ -93,7 +93,6 @@ const DoctorManagement: React.FC = () => {
 
   const columns: ColumnsType<Doctor> = [
     { title: "Tên bác sĩ", dataIndex: "name" },
-    { title: "Chuyên khoa", dataIndex: "specialty" },
     {
       title: "Giá khám",
       dataIndex: "price",
@@ -181,9 +180,7 @@ const DoctorManagement: React.FC = () => {
             <Input />
           </Form.Item>
 
-          <Form.Item label="Chuyên khoa" name="specialty" rules={[{ required: true }]}>
-            <Input />
-          </Form.Item>
+     
 
           <Form.Item label="Giá khám" name="price" rules={[{ required: true }]}>
             <InputNumber style={{ width: "100%" }} min={0} />
