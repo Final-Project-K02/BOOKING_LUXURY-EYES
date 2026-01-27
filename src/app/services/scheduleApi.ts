@@ -1,10 +1,20 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import type { ScheduleResponse } from "../../types/Schedule";
+import type { RootState } from "../store";
 
 export const scheduleApi = createApi({
   reducerPath: "scheduleApi",
   baseQuery: fetchBaseQuery({
-    baseUrl: "https://api-class-o1lo.onrender.com/api/luxury_eyes/",
+    baseUrl: "http://localhost:8888/api/",
+    prepareHeaders: (headers, { getState }) => {
+      const token =
+        (getState() as RootState).auth.accessToken ||
+        localStorage.getItem("accessToken");
+      if (token) {
+        headers.set("authorization", `Bearer ${token}`);
+      }
+      return headers;
+    },
   }),
   tagTypes: ["Schedules", "ScheduleId"],
   endpoints: (builder) => ({
