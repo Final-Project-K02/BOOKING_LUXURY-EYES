@@ -24,13 +24,11 @@ export const appointmentApi = createApi({
   }),
   tagTypes: ["Appointments", "AppointmentScheduleId", "ScheduleId"],
   endpoints: (builder) => ({
-    // 🔹 Lấy lịch hẹn của user
     getAppointments: builder.query<BookingResponse, string>({
       query: (userId) => `appointments?userId=${userId}`,
       providesTags: ["Appointments"],
     }),
 
-    // 🔹 Lấy lịch theo schedule
     getBookingByScheduleId: builder.query<BookingResponse, string>({
       query: (scheduleId) => `appointments?scheduleId=${scheduleId}`,
       providesTags: (_r, _e, scheduleId) => [
@@ -38,7 +36,6 @@ export const appointmentApi = createApi({
       ],
     }),
 
-    // 🔹 Lấy lịch theo bác sĩ ✅ (MỚI)
     getAppointmentsByDoctor: builder.query<BookingResponse, string>({
       query: (doctorId) => `appointments/doctor?doctorId=${doctorId}`,
       providesTags: (_r, _e, doctorId) => [
@@ -46,12 +43,17 @@ export const appointmentApi = createApi({
       ],
     }),
 
-    // 🔹 Đặt lịch
-   createBooking: builder.mutation<void, BookingPayload>({
+  createBooking: builder.mutation<void, BookingPayload>({
   query: (bookingData) => ({
     url: "/appointments",
     method: "POST",
-    body: bookingData,
+    body: {
+      doctorId: bookingData.doctor.id,
+      scheduleId: bookingData.scheduleId,
+      dateTime: bookingData.dateTime,
+      time: bookingData.time,
+      room: bookingData.room,
+    },
   }),
   invalidatesTags: (_r, _e, arg) => [
     "Appointments",
@@ -61,7 +63,6 @@ export const appointmentApi = createApi({
 }),
 
 
-    // 🔹 Huỷ lịch (người dùng)
     cancelAppointment: builder.mutation<
       Appointment,
       { id: string; reason: string; scheduleId: string }
@@ -77,7 +78,6 @@ export const appointmentApi = createApi({
       ],
     }),
 
-    // 🔹 Gửi yêu cầu huỷ (xác nhận)
     cancelAppointmentConfirm: builder.mutation<
       Appointment,
       { id: string; reason: string; scheduleId: string }

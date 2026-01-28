@@ -50,7 +50,7 @@ const AppointmentManagement = () => {
 
   const updateStatus = async (id: string, status: AppointmentStatus) => {
     try {
-      await api.put(`/appointments/${id}`, { status });
+      await api.patch(`/appointments/${id}`, { status });
       message.success("Cập nhật trạng thái thành công");
       fetchAppointments();
     } catch {
