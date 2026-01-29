@@ -11,26 +11,41 @@ export const appointmentApi = createApi({
   baseQuery: createBaseQuery(
     "https://api-class-o1lo.onrender.com/api/luxury_eyes/",
   ),
+
   tagTypes: ["Appointments", "AppointmentScheduleId", "ScheduleId"],
   endpoints: (builder) => ({
     getAppointments: builder.query<BookingResponse, string>({
-      query: (userId) => `appointments/?userId=${userId}`,
+      query: (userId) => `appointments?userId=${userId}`,
       providesTags: ["Appointments"],
     }),
 
     getBookingByScheduleId: builder.query<BookingResponse, string>({
       query: (scheduleId) => `appointments?scheduleId=${scheduleId}`,
-      providesTags: (_result, _error, scheduleId) => [
+      providesTags: (_r, _e, scheduleId) => [
         { type: "AppointmentScheduleId", id: scheduleId },
       ],
     }),
+
+    getAppointmentsByDoctor: builder.query<BookingResponse, string>({
+      query: (doctorId) => `appointments/doctor?doctorId=${doctorId}`,
+      providesTags: (_r, _e, doctorId) => [
+        { type: "ScheduleId", id: doctorId },
+      ],
+    }),
+
     createBooking: builder.mutation<void, BookingPayload>({
       query: (bookingData) => ({
         url: "/appointments",
         method: "POST",
-        body: bookingData,
+        body: {
+          doctorId: bookingData.doctor.id,
+          scheduleId: bookingData.scheduleId,
+          dateTime: bookingData.dateTime,
+          time: bookingData.time,
+          room: bookingData.room,
+        },
       }),
-      invalidatesTags: (_result, _error, arg) => [
+      invalidatesTags: (_r, _e, arg) => [
         "Appointments",
         { type: "AppointmentScheduleId", id: arg.scheduleId },
         { type: "ScheduleId", id: arg.doctor.id },
@@ -72,6 +87,7 @@ export const appointmentApi = createApi({
 export const {
   useGetAppointmentsQuery,
   useGetBookingByScheduleIdQuery,
+  useGetAppointmentsByDoctorQuery,
   useCreateBookingMutation,
   useCancelAppointmentMutation,
   useCancelAppointmentConfirmMutation,

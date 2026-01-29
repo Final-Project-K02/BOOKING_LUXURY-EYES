@@ -13,7 +13,7 @@ export const scheduleApi = createApi({
     }),
 
     getScheduleDoctorId: builder.query<ScheduleResponse, string>({
-      query: (doctorId) => `schedule?doctorId=${doctorId}`,
+      query: (doctorId) => `schedules?doctorId=${doctorId}`,
       providesTags: ["ScheduleId"],
     }),
   }),

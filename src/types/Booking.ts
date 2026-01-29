@@ -16,6 +16,7 @@ export interface BookingPayload {
     paymentMethod: string;
     paymentStatus: string;
   };
+  
   doctor: {
     id: string;
     name: string;
