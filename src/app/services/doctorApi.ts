@@ -10,23 +10,37 @@ export const doctorApi = createApi({
       const token =
         (getState() as RootState).auth.accessToken ||
         localStorage.getItem("accessToken");
+
       if (token) {
         headers.set("authorization", `Bearer ${token}`);
       }
       return headers;
     },
   }),
-  tagTypes: ["Doctors"], // khai báo danh sách các tag sẽ dùng
+  tagTypes: ["Doctors"],
   endpoints: (builder) => ({
-    // builder là object chứa các hàm để tạo endpoint
+    /* ================= CLIENT ================= */
     getDoctors: builder.query<DoctorResponse, { inputSearch?: string } | void>({
       query: (params) =>
         params?.inputSearch
-          ? `doctors/?name=${params.inputSearch}`
-          : `doctors/`,
+          ? `doctors?name=${params.inputSearch}`
+          : `doctors`,
+      providesTags: ["Doctors"],
+    }),
+
+    /* ================= ADMIN ================= */
+    getDoctorsByAdmin: builder.query<
+      DoctorResponse,
+      { inputSearch?: string } | void
+    >({
+      query: (params) =>
+        params?.inputSearch
+          ? `doctors/admin?name=${params.inputSearch}`
+          : `doctors/admin`,
       providesTags: ["Doctors"],
     }),
   }),
 });
 
-export const { useGetDoctorsQuery } = doctorApi;
+
+export const { useGetDoctorsQuery, useGetDoctorsByAdminQuery } = doctorApi;
