@@ -1,27 +1,17 @@
-import { fetchBaseQuery } from "@reduxjs/toolkit/query";
 import { createApi } from "@reduxjs/toolkit/query/react";
 import type {
   Appointment,
   BookingPayload,
   BookingResponse,
 } from "../../types/Booking";
-import type { RootState } from "../store";
+import { createBaseQuery } from "./baseQuery";
 
 export const appointmentApi = createApi({
   reducerPath: "appointmentApi",
-  baseQuery: fetchBaseQuery({
-    baseUrl: "http://localhost:8888/api",
-    prepareHeaders: (headers, { getState }) => {
-      const token =
-        (getState() as RootState).auth.accessToken ||
-        localStorage.getItem("accessToken");
+  baseQuery: createBaseQuery(
+    "https://api-class-o1lo.onrender.com/api/luxury_eyes/",
+  ),
 
-      if (token) {
-        headers.set("authorization", `Bearer ${token}`);
-      }
-      return headers;
-    },
-  }),
   tagTypes: ["Appointments", "AppointmentScheduleId", "ScheduleId"],
   endpoints: (builder) => ({
     getAppointments: builder.query<BookingResponse, string>({
@@ -43,25 +33,24 @@ export const appointmentApi = createApi({
       ],
     }),
 
-  createBooking: builder.mutation<void, BookingPayload>({
-  query: (bookingData) => ({
-    url: "/appointments",
-    method: "POST",
-    body: {
-      doctorId: bookingData.doctor.id,
-      scheduleId: bookingData.scheduleId,
-      dateTime: bookingData.dateTime,
-      time: bookingData.time,
-      room: bookingData.room,
-    },
-  }),
-  invalidatesTags: (_r, _e, arg) => [
-    "Appointments",
-    { type: "AppointmentScheduleId", id: arg.scheduleId },
-    { type: "ScheduleId", id: arg.doctor.id },
-  ],
-}),
-
+    createBooking: builder.mutation<void, BookingPayload>({
+      query: (bookingData) => ({
+        url: "/appointments",
+        method: "POST",
+        body: {
+          doctorId: bookingData.doctor.id,
+          scheduleId: bookingData.scheduleId,
+          dateTime: bookingData.dateTime,
+          time: bookingData.time,
+          room: bookingData.room,
+        },
+      }),
+      invalidatesTags: (_r, _e, arg) => [
+        "Appointments",
+        { type: "AppointmentScheduleId", id: arg.scheduleId },
+        { type: "ScheduleId", id: arg.doctor.id },
+      ],
+    }),
 
     cancelAppointment: builder.mutation<
       Appointment,
