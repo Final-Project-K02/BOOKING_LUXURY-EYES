@@ -15,7 +15,6 @@ import type { ColumnsType } from "antd/es/table";
 import { useEffect, useState } from "react";
 import api from "../../api";
 
-/* ================= TYPES ================= */
 
 interface Doctor {
   _id: string;

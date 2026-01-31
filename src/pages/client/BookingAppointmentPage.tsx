@@ -49,14 +49,12 @@ dayjs.extend(isSameOrBefore);
 const { RangePicker } = DatePicker;
 const { TextArea } = Input;
 const BookingAppointmentPage = () => {
-  //search doctor
   const [inputSearch, setInputSearch] = useState<string>("");
   const [delaySearch, setDelaySearch] = useState<string>("");
 
   const [fromDate, setFromDate] = useState<string>("");
   const [toDate, setToDate] = useState<string>("");
 
-  //doctors
   const { data, isLoading, isFetching, isError } = useGetDoctorsQuery({
     inputSearch: delaySearch,
   });
