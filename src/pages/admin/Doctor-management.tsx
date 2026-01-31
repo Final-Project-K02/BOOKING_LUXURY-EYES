@@ -21,22 +21,31 @@ interface Doctor {
   _id: string;
   name: string;
   avatar?: string;
-  specialty: string;
   price: number;
+  is_active?: boolean;
+  email?: string;
+  phone?: string;
   experience_year: number;
   description?: string;
+}
+
+interface DoctorFilter {
+  keyword?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  experience_year?: number;
 }
 
 interface DoctorFormValues {
   name: string;
   avatar?: string;
-  specialty: string;
   price: number;
   experience_year: number;
   description?: string;
 }
 
-/* ================= COMPONENT ================= */
+
+
 
 const DoctorManagement: React.FC = () => {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -45,22 +54,45 @@ const DoctorManagement: React.FC = () => {
   const [editingDoctor, setEditingDoctor] = useState<Doctor | null>(null);
 
   const [form] = Form.useForm<DoctorFormValues>();
+  const [filters, setFilters] = useState<DoctorFilter>({});
 
-  const fetchDoctors = async () => {
-    try {
-      setLoading(true);
-      const res = await api.get<{ data: Doctor[] }>("/doctors");
-      setDoctors(res.data.data ?? []);
-    } catch {
-      message.error("Không thể tải danh sách bác sĩ");
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  useEffect(() => {
+  
+ const fetchDoctors = async () => {
+  try {
+    setLoading(true);
+
+    const res = await api.get<{ data: Doctor[] }>("/doctors/admin", {
+      params: filters,
+    });
+    
+
+    setDoctors(res.data.data ?? []);
+  } catch {
+    message.error("Không thể tải danh sách bác sĩ");
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+useEffect(() => {
+  fetchDoctors();
+}, [filters]);
+
+const handleToggleStatus = async (doctor: Doctor) => {
+  try {
+    await api.patch(`/doctors/${doctor._id}/status`);
+    message.success(
+      doctor.is_active ? "Tắt bác sĩ thành công" : "Bật bác sĩ thành công"
+    );
     fetchDoctors();
-  }, []);
+  } catch  {
+    message.error(
+       "Không thể thay đổi trạng thái bác sĩ"
+    );
+  }
+};
 
   const handleSubmit = async (values: DoctorFormValues) => {
     try {
@@ -108,41 +140,73 @@ const DoctorManagement: React.FC = () => {
       dataIndex: "description",
       ellipsis: true,
       render: (text) => text || "—",
+    },{
+    title: "Email",
+      dataIndex: "email",
+      render: (text) => text || "—",
     },
     {
-      title: "Hành động",
-      render: (_, record) => (
-        <Space>
-          <Button
-            type="link"
-            onClick={() => {
-              setEditingDoctor(record);
-              form.setFieldsValue({
-                name: record.name,
-                avatar: record.avatar,
-                specialty: record.specialty,
-                price: record.price,
-                experience_year: record.experience_year,
-                description: record.description,
-              });
-              setOpenModal(true);
-            }}
-          >
-            Sửa
-          </Button>
-
-          <Popconfirm
-            title="Bạn chắc chắn muốn xoá?"
-            onConfirm={() => handleDelete(record._id)}
-          >
-            <Button type="link" danger>
-              Xoá
-            </Button>
-          </Popconfirm>
-        </Space>
-      ),
+      title: "Số điện thoại",
+      dataIndex: "phone",
+      render: (text) => text || "—",
     },
+    {
+  title: "Trạng thái",
+  dataIndex: "is_active",
+  render: (active) =>
+    active ? (
+      <span style={{ color: "green" }}>Đang hoạt động</span>
+    ) : (
+      <span style={{ color: "red" }}>Đã tắt</span>
+    ),
+},
+    
+  {
+  title: "Hành động",
+  render: (_, record) => (
+    <Space>
+      {/* Sửa */}
+      <Button
+        type="link"
+        onClick={() => {
+          setEditingDoctor(record);
+          form.setFieldsValue(record);
+          setOpenModal(true);
+        }}
+      >
+        Sửa
+      </Button>
+
+      {/* Tắt / Bật */}
+      <Popconfirm
+        title={
+          record.is_active
+            ? "Tắt bác sĩ này? (chỉ tắt khi không có lịch)"
+            : "Bật lại bác sĩ này?"
+        }
+        onConfirm={() => handleToggleStatus(record)}
+      >
+        <Button type="link" danger={record.is_active}>
+          {record.is_active ? "Tắt" : "Bật"}
+        </Button>
+      </Popconfirm>
+
+      {/* Xoá – chỉ cho xoá khi đã tắt */}
+      <Popconfirm
+        title="Bạn chắc chắn muốn xoá?"
+        onConfirm={() => handleDelete(record._id)}
+        disabled={record.is_active}
+      >
+        <Button danger disabled={record.is_active}>
+          Xoá
+        </Button>
+      </Popconfirm>
+    </Space>
+  ),
+},
   ];
+
+
 
   return (
     <Card
@@ -161,6 +225,72 @@ const DoctorManagement: React.FC = () => {
         </Button>
       }
     >
+    
+    <Form
+  layout="inline"
+  style={{ marginBottom: 16 }}
+  onFinish={() => fetchDoctors()}
+>
+  <Form.Item label="Tên bác sĩ">
+    <Input
+      placeholder="Nhập tên..."
+      allowClear
+      onChange={(e) =>
+        setFilters({ ...filters, keyword: e.target.value })
+      }
+    />
+  </Form.Item>
+
+  <Form.Item label="Giá từ">
+    <InputNumber
+      min={0}
+      placeholder="Min"
+      onChange={(value) =>
+        setFilters({ ...filters, minPrice: value ?? undefined })
+      }
+    />
+  </Form.Item>
+  
+
+  <Form.Item label="đến">
+    <InputNumber
+      min={0}
+      placeholder="Max"
+      onChange={(value) =>
+        setFilters({ ...filters, maxPrice: value ?? undefined })
+      }
+    />
+  </Form.Item>
+  
+
+  <Form.Item label="Kinh nghiệm ≥">
+    <InputNumber
+      min={0}
+      placeholder="Năm"
+      onChange={(value) =>
+        setFilters({ ...filters, experience_year: value ?? undefined })
+      }
+    />
+  </Form.Item>
+
+  <Form.Item>
+    <Space>
+      <Button type="primary" htmlType="submit">
+        Lọc
+      </Button>
+      <Button
+        onClick={() => {
+          setFilters({});
+          fetchDoctors();
+        }}
+      >
+        Reset
+      </Button>
+    </Space>
+  </Form.Item>
+</Form>
+
+
       <Table rowKey="_id" loading={loading} columns={columns} dataSource={doctors} />
 
       <Modal
@@ -180,10 +310,16 @@ const DoctorManagement: React.FC = () => {
             <Input />
           </Form.Item>
 
-     
-
           <Form.Item label="Giá khám" name="price" rules={[{ required: true }]}>
             <InputNumber style={{ width: "100%" }} min={0} />
+          </Form.Item>
+
+          <Form.Item label="Email" name="email">
+            <Input />
+          </Form.Item>
+
+          <Form.Item label="Số điện thoại" name="phone">
+            <Input />
           </Form.Item>
 
           <Form.Item
