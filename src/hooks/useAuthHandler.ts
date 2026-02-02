@@ -3,7 +3,7 @@ import { useDispatch } from "react-redux";
 import { message } from "antd";
 import type { LoginPayload, User } from "../types/User";
 import { authService, handleAuthError } from "../app/services/authApi";
-import { setAuth } from "../app/features/authSlice";
+import { setAuth, logout as logoutAction } from "../app/features/authSlice";
 import type { ForgotPasswordPayload } from "../types/Auth";
 
 export const useAuthHandler = () => {
@@ -97,10 +97,27 @@ export const useAuthHandler = () => {
     }
   };
 
+  const handleLogout = (options?: {
+    redirect?: string;
+    showMessage?: boolean;
+    messageText?: string;
+  }) => {
+    dispatch(logoutAction());
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("user");
+
+    if (options?.showMessage) {
+      message.success(options.messageText ?? "Đăng xuất thành công!");
+    }
+
+    nav(options?.redirect ?? "/");
+  };
+
   return {
     handleRegister,
     handleLogin,
     handleForgotPassword,
     handleResetPassword,
+    handleLogout,
   };
 };

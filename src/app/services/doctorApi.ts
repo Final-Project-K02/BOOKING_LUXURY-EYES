@@ -4,7 +4,7 @@ import { createBaseQuery } from "./baseQuery";
 
 export const doctorApi = createApi({
   reducerPath: "doctorApi",
-  baseQuery: createBaseQuery("http://localhost:8888/api/"),
+  baseQuery: createBaseQuery(),
   tagTypes: ["Doctors"], // khai báo danh sách các tag sẽ dùng
   endpoints: (builder) => ({
     /* ================= CLIENT ================= */

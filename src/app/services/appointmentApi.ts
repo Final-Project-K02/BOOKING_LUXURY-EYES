@@ -8,9 +8,7 @@ import { createBaseQuery } from "./baseQuery";
 
 export const appointmentApi = createApi({
   reducerPath: "appointmentApi",
-  baseQuery: createBaseQuery(
-    "https://api-class-o1lo.onrender.com/api/luxury_eyes/",
-  ),
+  baseQuery: createBaseQuery(),
 
   tagTypes: ["Appointments", "AppointmentScheduleId", "ScheduleId"],
   endpoints: (builder) => ({
