@@ -11,7 +11,7 @@ import type { CreatePatientInput } from "../../types/PatientProfile";
 
 export interface PatientInput {
   fullName: string;
-  dateOfBirth: string | dayjs.Dayjs;
+  dateOfBirth?: dayjs.Dayjs | string | null;
   gender: string;
   identityCard: string;
   email: string;

@@ -43,9 +43,7 @@ export type AppointmentStatus =
   | "REQUEST-CANCELED";
 
 const AppointmentHistoryPage = () => {
-  const [activeTab, setActiveTab] = useState<string>("all"); // tab đang được chọn
-  // const [searchText, setSearchText] = useState<string>(""); // tìm kiếm
-  // bấm xem chi tiết, hủy lịch
+  const [activeTab, setActiveTab] = useState<string>("all"); 
   const [selectedAppointment, setSelectedAppointment] =
     useState<Appointment | null>(null);
   // quản lý modal
@@ -63,7 +61,6 @@ const AppointmentHistoryPage = () => {
   const [cancelAppointment, { isLoading: isCancelling }] =
     useCancelAppointmentMutation();
   const [cancelAppointmentConfirm] = useCancelAppointmentConfirmMutation();
-  // màu tag, icon, text hiển thị
   const appointmentStatus = {
     PENDING: {
       color: "orange",
@@ -197,7 +194,6 @@ const AppointmentHistoryPage = () => {
     setOtherReason("");
     setSelectedAppointment(null);
   };
-  // lọc theo trạng thái
   const tabItems = [
     {
       key: "all",
@@ -241,7 +237,6 @@ const AppointmentHistoryPage = () => {
     },
   ];
 
-  // tab tất cả chỉ search --- tab khác lọc status + search
   const getFilteredAppointments = () => {
     if (activeTab === "all") {
       return filterAppointments();

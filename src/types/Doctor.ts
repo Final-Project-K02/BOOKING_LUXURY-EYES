@@ -12,3 +12,4 @@ export interface Doctor {
 export interface DoctorResponse {
   data: Doctor[];
 }
+
