@@ -4,7 +4,7 @@ import { createBaseQuery } from "./baseQuery";
 
 export const scheduleApi = createApi({
   reducerPath: "scheduleApi",
-  baseQuery: createBaseQuery("http://localhost:8888/api/"),
+  baseQuery: createBaseQuery(),
   tagTypes: ["Schedules", "ScheduleId"],
   endpoints: (builder) => ({
     getSchedules: builder.query<ScheduleResponse, void>({
