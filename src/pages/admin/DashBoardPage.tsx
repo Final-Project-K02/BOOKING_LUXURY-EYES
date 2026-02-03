@@ -74,7 +74,7 @@ const DashBoardPage: React.FC = () => {
       const [appointmentRes, doctorRes, patientRes] = await Promise.all([
         api.get("/appointments"),
         api.get("/doctors"),
-        api.get("/patients"),
+        api.get("/patient-profile"),
       ]);
 
       const appointmentsData: AppointmentApi[] = appointmentRes.data.data || [];
@@ -245,6 +245,7 @@ const DashBoardPage: React.FC = () => {
             <List
               dataSource={upcoming}
               renderItem={(item) => (
+                
                 <List.Item>
                   <List.Item.Meta
                     avatar={<Avatar icon={<UserOutlined />} />}

@@ -88,11 +88,11 @@ const handleToggleStatus = async (doctor: Doctor) => {
     fetchDoctors();
   } catch  {
     message.error(
-       "Không thể thay đổi trạng thái bác sĩ"
+       "Bác sĩ có lịch khám sắp tới , không thể tắt"
     );
   }
 };
-
+ 
   const handleSubmit = async (values: DoctorFormValues) => {
     try {
       if (editingDoctor) {
