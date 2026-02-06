@@ -26,10 +26,7 @@ import {
   useGetPatientProfileQuery,
   useUpdatePatientProfileMutation,
 } from "../../app/services/patientProfile";
-import {
-  useGetScheduleDoctorIdQuery,
-  useGetSchedulesQuery,
-} from "../../app/services/scheduleApi";
+import { useGetScheduleDoctorIdQuery } from "../../app/services/scheduleApi";
 import AddPatientModal from "../../components/BookingAppointment/AddPatientModal";
 import DoctorList from "../../components/BookingAppointment/DoctorList";
 import TimeSlotPicker from "../../components/BookingAppointment/TimeSlotPicker";
@@ -64,16 +61,13 @@ const BookingAppointmentPage = () => {
   // Doctors
   const { data, isLoading, isFetching, isError } = useGetDoctorsQuery({
     inputSearch: delaySearch,
+    scheduleDateFrom: fromDate || undefined,
+    scheduleDateTo: toDate || undefined,
   });
   const doctors: Doctor[] = useMemo(() => data?.data ?? [], [data]);
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
 
   // Schedule
-  const { data: schedulesData } = useGetSchedulesQuery();
-  const listSchedule: DoctorSchedule[] = useMemo(
-    () => schedulesData?.data ?? [],
-    [schedulesData],
-  );
   const { data: schedule } = useGetScheduleDoctorIdQuery(
     selectedDoctor?._id as string,
     {
@@ -251,6 +245,10 @@ const BookingAppointmentPage = () => {
   // Reset filters
   const handleReset = () => {
     setInputSearch("");
+    setFromDate("");
+    setToDate("");
+    setSelectedDoctor(null);
+    setSelectedSchedule(null);
   };
 
   // Handle date range change
@@ -271,40 +269,6 @@ const BookingAppointmentPage = () => {
   const disabledDate = (current: Dayjs) => {
     return current && current < dayjs().startOf("day");
   };
-
-  // Filter doctors by date
-  const filteredDoctors = useMemo(() => {
-    if (!fromDate || !toDate) {
-      return doctors.map((doc) => ({ ...doc, timeSlots: [] }));
-    }
-
-    const start = fromDate;
-    const end = toDate;
-
-    const doctorsWithAvailableSlots = doctors
-      .map((doc) => {
-        const doctorSchedule = listSchedule.find((s) => s.doctorId === doc._id);
-        if (!doctorSchedule || !doctorSchedule.timeSlots) {
-          return { ...doc, timeSlots: [] };
-        }
-
-        const availableSlotsInRange = doctorSchedule.timeSlots.filter(
-          (slot) => {
-            if (slot.status !== "AVAILABLE") return false;
-            const slotDate = slot.date.split("T")[0];
-            return slotDate >= start && slotDate <= end;
-          },
-        );
-
-        return {
-          ...doc,
-          timeSlots: availableSlotsInRange,
-        };
-      })
-      .filter((doc) => doc.timeSlots.length > 0);
-
-    return doctorsWithAvailableSlots;
-  }, [doctors, listSchedule, fromDate, toDate]);
 
   // Check for booking conflicts
   const slotsWithState = useMemo<TimeSlotUI[]>(() => {
@@ -564,7 +528,7 @@ const BookingAppointmentPage = () => {
                   <Button size="large" icon={<UserOutlined />}>
                     Tìm thấy
                     <span className="font-semibold">
-                      {filteredDoctors.length} bác sĩ
+                      {doctors.length} bác sĩ
                     </span>{" "}
                     phù hợp
                   </Button>
@@ -578,7 +542,7 @@ const BookingAppointmentPage = () => {
               {/* Doctor List */}
               {!selectedDoctor && (
                 <DoctorList
-                  doctors={filteredDoctors}
+                  doctors={doctors}
                   isFetching={isFetching}
                   handleDoctorSelect={handleDoctorSelect}
                 />
