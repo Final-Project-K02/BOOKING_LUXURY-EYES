@@ -30,7 +30,6 @@ export const useAuthHandler = () => {
 
   const handleLogin = async (values: LoginPayload): Promise<boolean> => {
     try {
-      console.log(values);
       const res = await authService.login({
         email: values.email,
         password: values.password,

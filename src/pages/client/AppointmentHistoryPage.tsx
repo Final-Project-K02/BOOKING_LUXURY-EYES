@@ -43,7 +43,7 @@ export type AppointmentStatus =
   | "REQUEST-CANCELED";
 
 const AppointmentHistoryPage = () => {
-  const [activeTab, setActiveTab] = useState<string>("all"); 
+  const [activeTab, setActiveTab] = useState<string>("all");
   const [selectedAppointment, setSelectedAppointment] =
     useState<Appointment | null>(null);
   // quản lý modal
@@ -54,7 +54,7 @@ const AppointmentHistoryPage = () => {
 
   const user = useAppSelector((state) => state.auth.user);
   const { data, isLoading, isError } = useGetAppointmentsQuery(
-    user?._id ?? skipToken
+    user?._id ?? skipToken,
   );
   const getAppointments: Appointment[] = data?.data ?? [];
 
@@ -161,7 +161,7 @@ const AppointmentHistoryPage = () => {
     const cancelCountThisMount = getAppointments.filter(
       (apm) =>
         (apm.status === "CANCELED" || apm.status === "REQUEST-CANCELED") &&
-        dayjs(apm.updatedAt).isSame(now, "month")
+        dayjs(apm.updatedAt).isSame(now, "month"),
     ).length;
 
     if (cancelCountThisMount >= 4) {
@@ -341,20 +341,20 @@ const AppointmentHistoryPage = () => {
                               <CalendarOutlined className="text-gray-400" />
                               <span>
                                 {dayjs(appointment.dateTime).format(
-                                  "YYYY-MM-DD"
+                                  "YYYY-MM-DD",
                                 )}{" "}
                                 - {appointment.time}
                               </span>
                             </div>
-                            <div className="flex items-center gap-2 text-sm">
+                            {/* <div className="flex items-center gap-2 text-sm">
                               <EnvironmentOutlined className="text-gray-400" />
                               <span className="truncate">
                                 {appointment.location}
                               </span>
-                            </div>
+                            </div> */}
                             <div className="flex items-center gap-2 text-sm">
                               <UserOutlined className="text-gray-400" />
-                              <span>{appointment.patient.fullName}</span>
+                              <span>{appointment.patientProfile.fullName}</span>
                             </div>
                             <div className="flex items-center gap-2 text-sm">
                               <span className="text-gray-400">💰</span>
@@ -473,13 +473,13 @@ const AppointmentHistoryPage = () => {
                 <div className="flex justify-between">
                   <span className="text-gray-600">Họ và tên:</span>
                   <span className="font-medium">
-                    {selectedAppointment.patient.fullName}
+                    {selectedAppointment.patientProfile.fullName}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Số điện thoại:</span>
                   <span className="font-medium">
-                    {selectedAppointment.patient.phone}
+                    {selectedAppointment.patientProfile.phone}
                   </span>
                 </div>
                 <div className="flex justify-between">

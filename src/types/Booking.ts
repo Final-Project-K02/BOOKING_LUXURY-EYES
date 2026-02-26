@@ -16,7 +16,7 @@ export interface BookingPayload {
     paymentMethod: string;
     paymentStatus: string;
   };
-  
+
   doctor: {
     id: string;
     name: string;
@@ -27,12 +27,13 @@ export interface BookingPayload {
     id: number;
     name: string;
   };
-  patient: {
+  patientProfile: {
     fullName: string;
     dateOfBirth: string;
     gender: string;
     phone: string;
   };
+  patientId?: string;
 }
 
 export interface Appointment extends BookingPayload {
