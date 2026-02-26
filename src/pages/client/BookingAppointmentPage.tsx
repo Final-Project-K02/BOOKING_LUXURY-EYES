@@ -30,7 +30,7 @@ import { useGetScheduleDoctorIdQuery } from "../../app/services/scheduleApi";
 import AddPatientModal from "../../components/BookingAppointment/AddPatientModal";
 import DoctorList from "../../components/BookingAppointment/DoctorList";
 import TimeSlotPicker from "../../components/BookingAppointment/TimeSlotPicker";
-import { BLOCK_STATUSES } from "../../types/Booking";
+import { BLOCK_STATUSES, type BookingPayload } from "../../types/Booking";
 import type { Doctor } from "../../types/Doctor";
 import type {
   CreatePatientInput,
@@ -270,53 +270,58 @@ const BookingAppointmentPage = () => {
     return current && current < dayjs().startOf("day");
   };
 
-  // Check for booking conflicts
-  const slotsWithState = useMemo<TimeSlotUI[]>(() => {
-    if (!scheduleItem?.timeSlots || !getBookingBySchedIdData) {
-      return [];
-    }
+  //   // Check for booking conflicts
+  //   const slotsWithState = useMemo<TimeSlotUI[]>(() => {
+  //     if (!scheduleItem?.timeSlots || !getBookingBySchedIdData) {
+  //       return [];
+  //     }
 
-    const today = dayjs().startOf("day");
+  //     const today = dayjs().startOf("day");
 
-    return scheduleItem.timeSlots
-      .filter((slot) => {
-        const slotDay = dayjs(slot.date).startOf("day");
-        return slotDay.isAfter(today);
-      })
-      .map((slot) => {
-        const slotDate = dayjs(slot.date).format("YYYY-MM-DD");
+  //     return scheduleItem.timeSlots
+  //       .filter((slot) => {
+  //         const slotDay = dayjs(slot.date).startOf("day");
+  //         return slotDay.isAfter(today);
+  //       })
+  //       .map((slot) => {
+  //         const slotDate = dayjs(slot.date).format("YYYY-MM-DD");
 
-        const doctorBlocked = getBookingBySchedIdData.some((apm) => {
-          return (
-            dayjs(apm.dateTime).format("YYYY-MM-DD") === slotDate &&
-            apm.time === slot.time &&
-            BLOCK_STATUSES.includes(apm.status)
-          );
-        });
+  //         const doctorBlocked = getBookingBySchedIdData.some((apm) => {
+  //           return (
+  //             dayjs(apm.dateTime).format("YYYY-MM-DD") === slotDate &&
+  //             apm.time === slot.time &&
+  //             BLOCK_STATUSES.includes(apm.status)
+  //           );
+  //         });
 
-        const userBlocked = getBookingUserData.some(
-          (apm) =>
-            dayjs(apm.dateTime).format("YYYY-MM-DD") === slotDate &&
-            apm.time === slot.time &&
-            BLOCK_STATUSES.includes(apm.status),
-        );
+  //  const patientBlocked = getBookingUserData.some((apm) => {
+  //   const apmPatientId =
+  //     typeof apm.patient === "string" ? apm.patient : apm.patient?._id;
 
-        const disabled =
-          slot.status !== "AVAILABLE" || doctorBlocked || userBlocked;
+  //   return (
+  //     apmPatientId === selectedPerson &&
+  //     dayjs(apm.dateTime).format("YYYY-MM-DD") === slotDate &&
+  //     apm.time === slot.time &&
+  //     BLOCK_STATUSES.includes(apm.status)
+  //   );
+  // });
 
-        return {
-          ...slot,
-          disabled,
-          disabledReason: doctorBlocked
-            ? "Khung giờ đã được đặt"
-            : userBlocked
-              ? "Bạn đã có lịch cùng khung giờ"
-              : slot.status !== "AVAILABLE"
-                ? "Khung giờ không khả dụng"
-                : undefined,
-        };
-      });
-  }, [scheduleItem?.timeSlots, getBookingUserData, getBookingBySchedIdData]);
+  //         const disabled =
+  //           slot.status !== "AVAILABLE" || doctorBlocked || patientBlocked;
+
+  //         return {
+  //           ...slot,
+  //           disabled,
+  //           disabledReason: doctorBlocked
+  //             ? "Khung giờ đã được đặt"
+  //             : patientBlocked
+  //               ? "Bạn đã có lịch cùng khung giờ"
+  //               : slot.status !== "AVAILABLE"
+  //                 ? "Khung giờ không khả dụng"
+  //                 : undefined,
+  //         };
+  //       });
+  //   }, [scheduleItem?.timeSlots, getBookingUserData, getBookingBySchedIdData]);
 
   // Confirm booking
   const handleConfirmBooking = async () => {
@@ -342,31 +347,34 @@ const BookingAppointmentPage = () => {
 
     try {
       const payload = {
-        userId: user?._id ?? "",
+        userId: user?._id ?? "", // Chưa được gửi trong API hiện tại
         scheduleId: scheduleItem._id,
-        scheduleSlotId: Number(selectedSchedule.scheduleSlotId) || 0,
+        scheduleSlotId: Number(selectedSchedule.scheduleSlotId) || 0, // Chưa được gửi trong API hiện tại
         dateTime: selectedSchedule?.date ?? "",
         time: selectedSchedule?.time ?? "",
-        blockTime: 30,
-        location: selectedSchedule?.location ?? "",
-        status: "PENDING" as AppointmentStatus,
-        appointmentMethod: "DIRECT",
-        symptoms: symptoms,
+        blockTime: 30, // Chưa được gửi trong API hiện tại
+        location: selectedSchedule?.location ?? "", // Chưa được gửi trong API hiện tại
+        status: "PENDING" as AppointmentStatus, // Chưa được gửi trong API hiện tại
+        appointmentMethod: "DIRECT", // Chưa được gửi trong API hiện tại
+        symptoms: symptoms, // Chưa được gửi trong API hiện tại
         payment: {
+          // Chưa được gửi trong API hiện tại
           totalAmount: Number(selectedDoctor?.price) || 0,
           paymentMethod: "PAY_AT_CLINIC",
           paymentStatus: "UNPAID",
         },
         doctor: {
           id: selectedDoctor?._id ?? "",
-          name: selectedDoctor?.name ?? "",
-          avatar: selectedDoctor?.avatar ?? "",
-          experience_year: Number(selectedDoctor?.experience_year) || 0,
+          name: selectedDoctor?.name ?? "", // API chỉ lấy id
+          avatar: selectedDoctor?.avatar ?? "", // API chỉ lấy id
+          experience_year: Number(selectedDoctor?.experience_year) || 0, // API chỉ lấy id
         },
         room: {
           id: scheduleItem.roomId ?? 1,
           name: scheduleItem.roomName,
         },
+        // API đang map trường 'patient' trong body request từ 'bookingData.patientId'
+        // Nên object patient chi tiết ở dưới đang không được dùng
         patient: {
           fullName:
             PatientProData.find((p) => p._id === selectedPerson)?.fullName ??
@@ -385,7 +393,10 @@ const BookingAppointmentPage = () => {
             user?.phone ??
             "",
         },
-      };
+        patientId: selectedPerson, // Thêm trường này để API lấy được ID bệnh nhân
+      } as unknown as BookingPayload;
+
+      // check booking data
 
       if (!confirm("Xác nhận đặt lịch khám!")) return false;
 
@@ -616,7 +627,7 @@ const BookingAppointmentPage = () => {
                   <TimeSlotPicker
                     scheduleItem={{
                       ...scheduleItem,
-                      timeSlots: slotsWithState,
+                      // timeSlots: slotsWithState,
                     }}
                     selectedDate={selectedDate}
                     setSelectedDate={setSelectedDate}

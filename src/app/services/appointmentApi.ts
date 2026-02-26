@@ -41,8 +41,10 @@ export const appointmentApi = createApi({
           dateTime: bookingData.dateTime,
           time: bookingData.time,
           room: bookingData.room,
+          patientProfile: bookingData.patientId,
         },
       }),
+
       invalidatesTags: (_r, _e, arg) => [
         "Appointments",
         { type: "AppointmentScheduleId", id: arg.scheduleId },
