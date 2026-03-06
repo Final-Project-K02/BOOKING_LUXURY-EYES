@@ -130,7 +130,7 @@ const AdminLayout: React.FC = () => {
                 style: { margin: "24px 16px", borderColor: "rgba(255,255,255,0.2)" },
               },
               {
-                key: "logout", // Đổi key để tránh navigate nhầm
+                key: "/", // Đổi key để tránh navigate nhầm
                 icon: <LogoutOutlined />,
                 label: "Đăng xuất",
                 style: { color: "#ffcfcf" }, // Màu đỏ nhạt cho cảnh báo

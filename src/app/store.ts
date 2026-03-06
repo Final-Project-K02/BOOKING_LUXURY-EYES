@@ -5,14 +5,16 @@ import { appointmentApi } from "./services/appointmentApi";
 import { doctorApi } from "./services/doctorApi";
 import { patientProfileApi } from "./services/patientProfile";
 import { scheduleApi } from "./services/scheduleApi";
+import { paymentApi } from "./services/paymentApi";
 export const store = configureStore({
   reducer: {
     //rtk query
     [doctorApi.reducerPath]: doctorApi.reducer,
     [scheduleApi.reducerPath]: scheduleApi.reducer,
     [patientProfileApi.reducerPath]: patientProfileApi.reducer,
+    
     [appointmentApi.reducerPath]: appointmentApi.reducer,
-
+    [paymentApi.reducerPath]: paymentApi.reducer,
     // rtk
     auth: authSlice.reducer,
   },
@@ -22,7 +24,9 @@ export const store = configureStore({
       .concat(doctorApi.middleware)
       .concat(scheduleApi.middleware)
       .concat(patientProfileApi.middleware)
-      .concat(appointmentApi.middleware), // quản lý cache và tag
+      .concat(appointmentApi.middleware)
+      .concat(paymentApi.middleware),
+       // quản lý cache và tag
 });
 
 setupListeners(store.dispatch); //kích hoạt các listener để hỗ trợ các tính năng nâng cao của RTK Query: refetchOnFocus, refetchOnReconnect

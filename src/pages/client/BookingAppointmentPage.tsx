@@ -16,6 +16,7 @@ import { useNavigate } from "react-router-dom";
 import { useAppSelector } from "../../app/hook";
 import {
   useCreateBookingMutation,
+  useCreateVnpayLinkMutation,
   useGetAppointmentsQuery,
   useGetBookingByScheduleIdQuery,
 } from "../../app/services/appointmentApi";
@@ -129,8 +130,13 @@ const BookingAppointmentPage = () => {
     useUpdatePatientProfileMutation();
   const [deletePatientProfile] = useDeletePatientProfileMutation();
 
-  const [createBooking] = useCreateBookingMutation();
+const [createBooking, { isLoading: isCreatingBooking }] =useCreateBookingMutation();
 
+const [createVnpayLink, { isLoading: isCreatingPaymentLink }] =useCreateVnpayLinkMutation();
+
+const totalAmount = Number(selectedDoctor?.price) || 0;
+const depositAmount = Math.ceil(totalAmount * 0.4);
+const isSubmitting = isCreatingBooking || isCreatingPaymentLink;
   const [showAddPatientModal, setShowAddPatientModal] = useState(false);
   const [editingPatient, setEditingPatient] = useState<PatientResponse | null>(
     null,
@@ -320,85 +326,127 @@ const BookingAppointmentPage = () => {
 
   // Confirm booking
   const handleConfirmBooking = async () => {
-    if (!user?._id || !isAuthenticated) {
-      message.error("Vui lòng đăng nhập");
-      nav("/auth/login");
-      return;
-    }
-    if (!selectedPerson) {
-      message.error("Vui lòng chọn người tới khám");
+  if (!user?._id || !isAuthenticated) {
+    message.error("Vui lòng đăng nhập");
+    nav("/auth/login");
+    return false;
+  }
+
+  if (!selectedPerson) {
+    message.error("Vui lòng chọn người tới khám");
+    return false;
+  }
+
+  if (!selectedDoctor) {
+    message.error("Vui lòng chọn bác sĩ");
+    return false;
+  }
+
+  if (!selectedSchedule || !scheduleItem?._id) {
+    message.error("Vui lòng chọn lịch khám");
+    return false;
+  }
+
+  try {
+    const payload = {
+      userId: user?._id ?? "",
+      scheduleId: scheduleItem._id,
+      scheduleSlotId: Number(selectedSchedule.scheduleSlotId) || 0,
+      dateTime: selectedSchedule?.date ?? "",
+      time: selectedSchedule?.time ?? "",
+      blockTime: 30,
+      location: selectedSchedule?.location ?? "",
+      status: "PENDING" as AppointmentStatus,
+      appointmentMethod: "DIRECT",
+      symptoms,
+      payment: {
+        totalAmount,
+        paymentMethod: "VNPAY",
+        paymentStatus: "UNPAID",
+      },
+      doctor: {
+        id: selectedDoctor?._id ?? "",
+        name: selectedDoctor?.name ?? "",
+        avatar: selectedDoctor?.avatar ?? "",
+        experience_year: Number(selectedDoctor?.experience_year) || 0,
+      },
+      room: {
+        id: scheduleItem.roomId ?? 1,
+        name: scheduleItem.roomName,
+      },
+      patient: {
+        fullName:
+          PatientProData.find((p) => p._id === selectedPerson)?.fullName ??
+          user?.fullName ??
+          "",
+        dateOfBirth:
+          PatientProData.find((p) => p._id === selectedPerson)?.dateOfBirth ??
+          user?.dateOfBirth ??
+          "",
+        gender:
+          PatientProData.find((p) => p._id === selectedPerson)?.gender ??
+          user?.gender ??
+          "",
+        phone:
+          PatientProData.find((p) => p._id === selectedPerson)?.phone ??
+          user?.phone ??
+          "",
+      },
+    };
+
+    if (
+      !confirm(
+        `Xác nhận đặt lịch khám?\n\nTiền cọc cần thanh toán: ${depositAmount.toLocaleString(
+          "vi-VN",
+        )} đ\nBạn có 5 phút để hoàn tất thanh toán.`,
+      )
+    ) {
       return false;
     }
 
-    if (!selectedDoctor) {
-      message.error("Vui lòng chọn bác sĩ");
-      return false;
-    }
+    const bookingRes = await createBooking(payload).unwrap();
+    const appointmentId = bookingRes?.data?._id;
 
-    if (!selectedSchedule) {
-      message.error("Vui lòng chọn lịch khám");
-      return false;
+    if (!appointmentId) {
+      message.success("Đặt lịch thành công");
+      nav("/lich-kham");
+      return true;
     }
 
     try {
-      const payload = {
-        userId: user?._id ?? "",
-        scheduleId: scheduleItem._id,
-        scheduleSlotId: Number(selectedSchedule.scheduleSlotId) || 0,
-        dateTime: selectedSchedule?.date ?? "",
-        time: selectedSchedule?.time ?? "",
-        blockTime: 30,
-        location: selectedSchedule?.location ?? "",
-        status: "PENDING" as AppointmentStatus,
-        appointmentMethod: "DIRECT",
-        symptoms: symptoms,
-        payment: {
-          totalAmount: Number(selectedDoctor?.price) || 0,
-          paymentMethod: "PAY_AT_CLINIC",
-          paymentStatus: "UNPAID",
-        },
-        doctor: {
-          id: selectedDoctor?._id ?? "",
-          name: selectedDoctor?.name ?? "",
-          avatar: selectedDoctor?.avatar ?? "",
-          experience_year: Number(selectedDoctor?.experience_year) || 0,
-        },
-        room: {
-          id: scheduleItem.roomId ?? 1,
-          name: scheduleItem.roomName,
-        },
-        patient: {
-          fullName:
-            PatientProData.find((p) => p._id === selectedPerson)?.fullName ??
-            user?.fullName ??
-            "",
-          dateOfBirth:
-            PatientProData.find((p) => p._id === selectedPerson)?.dateOfBirth ??
-            user?.dateOfBirth ??
-            "",
-          gender:
-            PatientProData.find((p) => p._id === selectedPerson)?.gender ??
-            user?.gender ??
-            "",
-          phone:
-            PatientProData.find((p) => p._id === selectedPerson)?.phone ??
-            user?.phone ??
-            "",
-        },
-      };
+      const payRes = await createVnpayLink(appointmentId).unwrap();
+      const paymentUrl = payRes?.data?.paymentUrl;
 
-      if (!confirm("Xác nhận đặt lịch khám!")) return false;
+      if (!paymentUrl) {
+        message.warning(
+          "Lịch đã được tạo. Bạn có thể thanh toán trong trang Lịch khám trong vòng 5 phút.",
+        );
+        nav("/lich-kham");
+        return true;
+      }
 
-      await createBooking(payload);
-      message.success("Đặt lịch thành công!");
+      message.loading("Đang chuyển tới cổng thanh toán...", 1);
+      console.log("paymentUrl =", paymentUrl);
+      window.location.href = paymentUrl;
+      return true;
+    } catch (paymentError: any) {
+      console.log(paymentError);
+      message.warning(
+        paymentError?.data?.message ||
+          "Lịch đã được tạo. Bạn có thể thanh toán trong trang Lịch khám trong vòng 5 phút.",
+      );
       nav("/lich-kham");
-    } catch (error) {
-      console.log(error);
-      message.error("Đặt lịch thất bại, vui lòng thử lại sau");
+      return true;
     }
+  } catch (error: any) {
+    console.log(error);
+    message.error(
+      error?.data?.message || "Đặt lịch thất bại, vui lòng thử lại sau",
+    );
+  }
 
-    return true;
-  };
+  return false;
+};
 
   if (isLoading) return <div className="text-center mt-3">Loading...</div>;
   if (isError)
@@ -697,15 +745,37 @@ const BookingAppointmentPage = () => {
                   </div>
 
                   {/* Confirm Button */}
-                  <Button
-                    type="primary"
-                    size="large"
-                    block
-                    className="bg-orange-500 hover:bg-orange-600 border-0"
-                    onClick={handleConfirmBooking}
-                  >
-                    Xác nhận đặt khám
-                  </Button>
+                  <div className="space-y-3 border-t pt-3">
+  <div className="flex items-center justify-between">
+    <span className="text-sm text-gray-500">Tổng phí khám</span>
+    <span className="font-semibold text-gray-800">
+      {totalAmount.toLocaleString("vi-VN")} đ
+    </span>
+  </div>
+
+  <div className="flex items-center justify-between">
+    <span className="text-sm text-gray-500">Tiền cọc (40%)</span>
+    <span className="font-bold text-orange-500">
+      {depositAmount.toLocaleString("vi-VN")} đ
+    </span>
+  </div>
+
+  <p className="text-xs text-gray-500">
+    Sau khi đặt lịch, bạn sẽ được chuyển tới trang thanh toán. Nếu chưa thanh
+    toán ngay, bạn vẫn có thể thanh toán lại trong vòng 5 phút tại trang lịch
+    khám.
+  </p>
+</div>
+                 <Button
+  type="primary"
+  size="large"
+  block
+  loading={isSubmitting}
+  className="bg-orange-500 hover:bg-orange-600 border-0"
+  onClick={handleConfirmBooking}
+>
+  Đặt lịch & thanh toán cọc
+</Button>
                 </div>
               ) : (
                 <div className="text-center py-12">

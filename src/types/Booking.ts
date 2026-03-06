@@ -11,22 +11,37 @@ export interface BookingPayload {
   status: AppointmentStatus;
   appointmentMethod: string;
   symptoms: string;
+
   payment: {
     totalAmount: number;
     paymentMethod: string;
-    paymentStatus: string;
+    paymentStatus:
+      | "UNPAID"
+      | "PENDING"
+      | "PAID"
+      | "FAILED"
+      | "EXPIRED"
+      | string;
+    depositRate?: number;
+    depositAmount?: number;
+    txnRef?: string | null;
+    vnpTransactionNo?: string | null;
+    paidAt?: string | null;
+    expireAt?: string | null;
   };
-  
+
   doctor: {
     id: string;
     name: string;
     avatar?: string;
     experience_year: number;
   };
+
   room: {
     id: number;
     name: string;
   };
+
   patient: {
     fullName: string;
     dateOfBirth: string;
@@ -36,13 +51,43 @@ export interface BookingPayload {
 }
 
 export interface Appointment extends BookingPayload {
-  _id?: string;
+  _id: string;
   reason?: string;
   updatedAt?: string;
+  createdAt?: string;
+
+  // backend hiện tại có thể trả populate theo kiểu khác
+  doctor:
+    | BookingPayload["doctor"]
+    | {
+        _id?: string;
+        id?: string;
+        name?: string;
+        fullName?: string;
+        avatar?: string;
+        experience_year?: number;
+      };
+
+  patient:
+    | BookingPayload["patient"]
+    | {
+        _id?: string;
+        fullName?: string;
+        phone?: string;
+        dateOfBirth?: string;
+        gender?: string;
+      };
+
+  room: {
+    id?: number;
+    name?: string;
+  };
 }
+
 export interface BookingResponse {
-  success: boolean;
-  data: BookingPayload[];
+  success?: boolean;
+  message?: string;
+  data: Appointment[];
 }
 
 export const BLOCK_STATUSES = [

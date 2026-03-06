@@ -8,6 +8,7 @@ import {
   InfoCircleOutlined,
   SyncOutlined,
   UserOutlined,
+  CreditCardOutlined,
 } from "@ant-design/icons";
 import {
   Avatar,
@@ -21,11 +22,12 @@ import {
   Tag,
 } from "antd";
 import dayjs from "dayjs";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   useCancelAppointmentConfirmMutation,
   useCancelAppointmentMutation,
+  useCreateVnpayLinkMutation,
   useGetAppointmentsQuery,
 } from "../../app/services/appointmentApi";
 import type { Appointment } from "../../types/Booking";
@@ -43,29 +45,50 @@ export type AppointmentStatus =
   | "REQUEST-CANCELED";
 
 const AppointmentHistoryPage = () => {
-  const [activeTab, setActiveTab] = useState<string>("all"); 
+  const [activeTab, setActiveTab] = useState<string>("all");
   const [selectedAppointment, setSelectedAppointment] =
     useState<Appointment | null>(null);
-  // quản lý modal
+
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [cancelModalVisible, setCancelModalVisible] = useState(false);
   const [cancelReason, setCancelReason] = useState<string>("");
   const [otherReason, setOtherReason] = useState<string>("");
+  const [now, setNow] = useState(dayjs());
 
   const user = useAppSelector((state) => state.auth.user);
-  const { data, isLoading, isError } = useGetAppointmentsQuery(
-    user?._id ?? skipToken
-  );
+
+  const {
+    data,
+    isLoading,
+    isError,
+    refetch,
+  } = useGetAppointmentsQuery(user?._id ?? skipToken, {
+    refetchOnFocus: true,
+    refetchOnReconnect: true,
+    refetchOnMountOrArgChange: true,
+  });
+
   const getAppointments: Appointment[] = data?.data ?? [];
 
   const [cancelAppointment, { isLoading: isCancelling }] =
     useCancelAppointmentMutation();
   const [cancelAppointmentConfirm] = useCancelAppointmentConfirmMutation();
+  const [createVnpayLink, { isLoading: isPayingAgain }] =
+    useCreateVnpayLinkMutation();
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(dayjs());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
   const appointmentStatus = {
     PENDING: {
       color: "orange",
       bgColor: "bg-orange-50",
-      text: "Chờ xác nhận",
+      text: "Chờ thanh toán",
       icon: <ClockCircleOutlined />,
     },
     CONFIRM: {
@@ -93,7 +116,7 @@ const AppointmentHistoryPage = () => {
       icon: <CloseCircleOutlined />,
     },
     "REQUEST-CANCELED": {
-      color: "yellow",
+      color: "gold",
       bgColor: "bg-yellow-50",
       text: "Đang yêu cầu hủy",
       icon: <ClockCircleOutlined />,
@@ -104,41 +127,117 @@ const AppointmentHistoryPage = () => {
     return appointmentStatus[status];
   };
 
-  // lọc danh sách
+  const getDoctorName = (appointment: Appointment) => {
+    return appointment?.doctor?.name || appointment?.doctor?.fullName || "Bác sĩ";
+  };
+
+  const getPatientName = (appointment: Appointment) => {
+    return appointment?.patient?.fullName || "Không rõ";
+  };
+
+  const getTotalAmount = (appointment: Appointment) => {
+    return Number(appointment?.payment?.totalAmount || 0);
+  };
+
+  const getDepositAmount = (appointment: Appointment) => {
+    const manual = Number(appointment?.payment?.depositAmount || 0);
+    if (manual > 0) return manual;
+
+    const total = Number(appointment?.payment?.totalAmount || 0);
+    return Math.ceil(total * 0.4);
+  };
+
+  const getPaymentStatusText = (paymentStatus?: string) => {
+    switch (paymentStatus) {
+      case "PAID":
+        return "Đã thanh toán";
+      case "PENDING":
+        return "Đang chờ xử lý";
+      case "EXPIRED":
+        return "Hết hạn thanh toán";
+      case "FAILED":
+        return "Thanh toán thất bại";
+      case "UNPAID":
+      default:
+        return "Chưa thanh toán";
+    }
+  };
+
+  const getRemainingSeconds = (expireAt?: string | null) => {
+    if (!expireAt) return 0;
+    const diff = dayjs(expireAt).diff(now, "second");
+    return diff > 0 ? diff : 0;
+  };
+
+  const formatCountdown = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainSeconds = seconds % 60;
+
+    return `${String(minutes).padStart(2, "0")}:${String(remainSeconds).padStart(2, "0")}`;
+  };
+
+  const canPayAgain = (appointment: Appointment) => {
+    const remaining = getRemainingSeconds(appointment?.payment?.expireAt);
+
+    return (
+      appointment?.status === "PENDING" &&
+      appointment?.payment?.paymentStatus !== "PAID" &&
+      remaining > 0
+    );
+  };
+
+  const isExpiredPayment = (appointment: Appointment) => {
+    const remaining = getRemainingSeconds(appointment?.payment?.expireAt);
+
+    return (
+      appointment?.status === "PENDING" &&
+      appointment?.payment?.paymentStatus !== "PAID" &&
+      remaining <= 0
+    );
+  };
+
   const filterAppointments = (status?: AppointmentStatus) => {
     let filtered = getAppointments;
 
-    // lọc theo trạng thái
     if (status) {
       filtered = filtered.filter((apt) => apt.status === status);
     }
 
-    // lọc theo ô tìm kiếm
-    // if (searchText) {
-    //   filtered = filtered.filter(
-    //     (apt) =>
-    //       apt._id.toLowerCase().includes(searchText.toLowerCase()) ||
-    //       apt.doctor.name.toLowerCase().includes(searchText.toLowerCase())
-    //   );
-    // }
-
     return filtered;
   };
 
-  // xem chi tiết lịch hẹn
   const handleViewDetail = (appointment: Appointment) => {
     setSelectedAppointment(appointment);
-
     setDetailModalVisible(true);
   };
 
-  // đóng chi tiết lịch hẹn
   const handleCancelAppointment = (appointment: Appointment) => {
     setSelectedAppointment(appointment);
     setCancelModalVisible(true);
   };
 
-  // hủy lịch
+  const handlePayNow = async (appointmentId: string) => {
+    try {
+      const res = await createVnpayLink(appointmentId).unwrap();
+      const paymentUrl = res?.data?.paymentUrl;
+
+      if (!paymentUrl) {
+        message.error("Không tạo được link thanh toán");
+        return;
+      }
+
+      message.loading("Đang chuyển tới cổng thanh toán...", 1);
+      console.log("paymentUrl =", paymentUrl);
+      window.location.href = paymentUrl;
+    } catch (error) {
+      console.log(error);
+      message.error(
+        error?.data?.message || "Không thể tạo link thanh toán lại",
+      );
+      refetch();
+    }
+  };
+
   const confirmCancel = async () => {
     if (!cancelReason) {
       message.error("Bạn phải chọn lý do hủy lịch");
@@ -146,7 +245,7 @@ const AppointmentHistoryPage = () => {
     }
 
     if (cancelReason === "other" && !otherReason.trim()) {
-      message.error("Vui lòng nhâp lý do hủy lịch");
+      message.error("Vui lòng nhập lý do hủy lịch");
       return;
     }
 
@@ -157,17 +256,17 @@ const AppointmentHistoryPage = () => {
 
     const reason = cancelReason === "other" ? otherReason : cancelReason;
 
-    const now = dayjs();
-    const cancelCountThisMount = getAppointments.filter(
+    const currentMonthCanceledCount = getAppointments.filter(
       (apm) =>
         (apm.status === "CANCELED" || apm.status === "REQUEST-CANCELED") &&
-        dayjs(apm.updatedAt).isSame(now, "month")
+        dayjs(apm.updatedAt).isSame(dayjs(), "month"),
     ).length;
 
-    if (cancelCountThisMount >= 4) {
+    if (currentMonthCanceledCount >= 4) {
       message.error("Bạn đã đạt giới hạn 4 lượt hủy trong tháng này");
       return;
     }
+
     try {
       if (selectedAppointment.status === "PENDING") {
         await cancelAppointment({
@@ -186,14 +285,19 @@ const AppointmentHistoryPage = () => {
         }).unwrap();
         message.success("Gửi yêu cầu hủy lịch thành công");
       }
+
+      refetch();
     } catch (error) {
       console.log(error);
+      message.error("Thao tác thất bại");
     }
+
     setCancelModalVisible(false);
     setCancelReason("");
     setOtherReason("");
     setSelectedAppointment(null);
   };
+
   const tabItems = [
     {
       key: "all",
@@ -201,7 +305,7 @@ const AppointmentHistoryPage = () => {
     },
     {
       key: "PENDING",
-      label: `Chờ xác nhận (${
+      label: `Chờ thanh toán (${
         getAppointments.filter((a) => a.status === "PENDING").length
       })`,
     },
@@ -237,21 +341,18 @@ const AppointmentHistoryPage = () => {
     },
   ];
 
-  const getFilteredAppointments = () => {
-    if (activeTab === "all") {
-      return filterAppointments();
-    }
+  const filteredAppointments = useMemo(() => {
+    if (activeTab === "all") return filterAppointments();
     return filterAppointments(activeTab as AppointmentStatus);
-  };
+  }, [activeTab, getAppointments]);
 
   if (isLoading) return <div className="text-center mt-3">Loading...</div>;
   if (isError)
-    return <div className="text-center mt-3">Error loading doctors</div>;
+    return <div className="text-center mt-3">Error loading appointments</div>;
 
   return (
     <div className="min-h-screen bg-gray-50 my-4">
       <div className="max-w-7xl mx-auto px-4 mt-4">
-        {/* Page Title */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-800 mb-2">
             Lịch khám của tôi
@@ -261,24 +362,6 @@ const AppointmentHistoryPage = () => {
           </p>
         </div>
 
-        {/* Search & Filter */}
-        {/* <Card className="mb-6 shadow-sm">
-          <div className="flex flex-wrap gap-4">
-            <Input
-              size="large"
-              placeholder="Tìm kiếm theo mã phiếu, tên bác sĩ, chuyên khoa..."
-              prefix={<SearchOutlined className="text-gray-400" />}
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              className="flex-1 min-w-[300px]"
-            />
-            <Button size="large" icon={<FilterOutlined />}>
-              Lọc nâng cao
-            </Button>
-          </div>
-        </Card> */}
-
-        {/* Tabs */}
         <Tabs
           activeKey={activeTab}
           onChange={setActiveTab}
@@ -286,39 +369,41 @@ const AppointmentHistoryPage = () => {
           className="mb-4"
         />
 
-        {/* Appointment List */}
         <div className="space-y-4">
-          {getFilteredAppointments().length === 0 ? (
+          {filteredAppointments.length === 0 ? (
             <Card className="text-center py-12">
               <CalendarOutlined className="text-6xl text-gray-300 mb-4" />
               <p className="text-gray-500">Không có lịch khám nào</p>
-              <Link to={"/dat-lich-kham"}>
+              <Link to="/dat-lich-kham">
                 <Button icon={<CalendarOutlined />} block>
                   Đặt lịch khám mới
                 </Button>
               </Link>
             </Card>
           ) : (
-            getFilteredAppointments()?.map((appointment: Appointment) => {
+            filteredAppointments.map((appointment) => {
               const statusConfig = getStatusConfig(appointment.status);
+              const remainingSeconds = getRemainingSeconds(
+                appointment?.payment?.expireAt,
+              );
+
               return (
                 <Card
                   key={appointment._id}
                   className="shadow-sm hover:shadow-md transition-shadow"
                 >
                   <div className="flex flex-col lg:flex-row gap-4">
-                    {/* Left - Doctor Info */}
                     <div className="flex-1">
                       <div className="flex items-start gap-4">
                         <Avatar size={64} icon={<UserOutlined />} />
                         <div className="flex-1">
-                          <div className="flex items-start justify-between mb-2">
+                          <div className="flex items-start justify-between mb-2 gap-4">
                             <div>
                               <h3 className="text-lg font-semibold text-gray-800">
-                                {appointment.doctor.name}
+                                {getDoctorName(appointment)}
                               </h3>
                               <p className="text-sm text-blue-600">
-                                {appointment.room.name}
+                                {appointment?.room?.name || "Chưa rõ phòng khám"}
                               </p>
                               <p className="text-xs text-gray-500 mt-1">
                                 Mã phiếu:{" "}
@@ -327,12 +412,25 @@ const AppointmentHistoryPage = () => {
                                 </span>
                               </p>
                             </div>
+
                             <Tag
-                              color={statusConfig.color}
-                              icon={statusConfig.icon}
+                              color={
+                                isExpiredPayment(appointment)
+                                  ? "red"
+                                  : statusConfig.color
+                              }
+                              icon={
+                                isExpiredPayment(appointment) ? (
+                                  <CloseCircleOutlined />
+                                ) : (
+                                  statusConfig.icon
+                                )
+                              }
                               className="text-sm px-3 py-1"
                             >
-                              {statusConfig.text}
+                              {isExpiredPayment(appointment)
+                                ? "Hết hạn thanh toán"
+                                : statusConfig.text}
                             </Tag>
                           </div>
 
@@ -341,34 +439,82 @@ const AppointmentHistoryPage = () => {
                               <CalendarOutlined className="text-gray-400" />
                               <span>
                                 {dayjs(appointment.dateTime).format(
-                                  "YYYY-MM-DD"
+                                  "YYYY-MM-DD",
                                 )}{" "}
                                 - {appointment.time}
                               </span>
                             </div>
+
                             <div className="flex items-center gap-2 text-sm">
                               <EnvironmentOutlined className="text-gray-400" />
                               <span className="truncate">
-                                {appointment.location}
+                                {appointment.location || "Chưa có thông tin"}
                               </span>
                             </div>
+
                             <div className="flex items-center gap-2 text-sm">
                               <UserOutlined className="text-gray-400" />
-                              <span>{appointment.patient.fullName}</span>
+                              <span>{getPatientName(appointment)}</span>
                             </div>
+
                             <div className="flex items-center gap-2 text-sm">
                               <span className="text-gray-400">💰</span>
                               <span className="font-semibold text-orange-600">
-                                {appointment.payment.totalAmount} đ
+                                {getTotalAmount(appointment).toLocaleString(
+                                  "vi-VN",
+                                )}{" "}
+                                đ
                               </span>
                             </div>
                           </div>
+
+                          {canPayAgain(appointment) && (
+                            <div className="mt-4 rounded-lg bg-orange-50 border border-orange-200 p-3">
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                <div>
+                                  <div className="font-semibold text-orange-700">
+                                    Chờ thanh toán cọc
+                                  </div>
+                                  <div className="text-sm text-gray-600">
+                                    Tiền cọc:{" "}
+                                    <span className="font-semibold">
+                                      {getDepositAmount(appointment).toLocaleString(
+                                        "vi-VN",
+                                      )}{" "}
+                                      đ
+                                    </span>
+                                  </div>
+                                  <div className="text-sm text-gray-600">
+                                    Còn lại:{" "}
+                                    <span className="font-semibold text-red-500">
+                                      {formatCountdown(remainingSeconds)}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <Button
+                                  type="primary"
+                                  icon={<CreditCardOutlined />}
+                                  loading={isPayingAgain}
+                                  onClick={() => handlePayNow(appointment._id)}
+                                >
+                                  Thanh toán ngay
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+
+                          {isExpiredPayment(appointment) && (
+                            <div className="mt-4 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-600">
+                              Lịch hẹn này đã hết hạn thanh toán. Vui lòng đặt
+                              lịch mới nếu bạn muốn tiếp tục.
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
 
-                    {/* Right - Actions */}
-                    <div className="flex lg:flex-col gap-2 lg:w-40">
+                    <div className="flex lg:flex-col gap-2 lg:w-44">
                       <Button
                         type="primary"
                         icon={<FileTextOutlined />}
@@ -377,6 +523,7 @@ const AppointmentHistoryPage = () => {
                       >
                         Chi tiết
                       </Button>
+
                       {(appointment.status === "PENDING" ||
                         appointment.status === "CONFIRM") && (
                         <Button
@@ -388,15 +535,18 @@ const AppointmentHistoryPage = () => {
                           Hủy lịch
                         </Button>
                       )}
+
                       {appointment.status === "DONE" && (
-                        <Link to={"/dat-lich-kham"}>
+                        <Link to="/dat-lich-kham">
                           <Button icon={<CalendarOutlined />} block>
                             Đặt lịch khám mới
                           </Button>
                         </Link>
                       )}
-                      {appointment.status === "CANCELED" && (
-                        <Link to={"/dat-lich-kham"}>
+
+                      {(appointment.status === "CANCELED" ||
+                        isExpiredPayment(appointment)) && (
+                        <Link to="/dat-lich-kham">
                           <Button icon={<CalendarOutlined />} block>
                             Đặt lại
                           </Button>
@@ -411,7 +561,6 @@ const AppointmentHistoryPage = () => {
         </div>
       </div>
 
-      {/* Detail Modal */}
       <Modal
         title="Chi tiết lịch khám"
         open={detailModalVisible}
@@ -427,17 +576,31 @@ const AppointmentHistoryPage = () => {
           <div className="space-y-4">
             <div
               className={`p-4 rounded-lg ${
-                getStatusConfig(selectedAppointment.status).bgColor
+                isExpiredPayment(selectedAppointment)
+                  ? "bg-red-50"
+                  : getStatusConfig(selectedAppointment.status).bgColor
               }`}
             >
               <div className="flex items-center justify-between">
                 <span className="font-semibold">Trạng thái:</span>
                 <Tag
-                  color={getStatusConfig(selectedAppointment.status).color}
-                  icon={getStatusConfig(selectedAppointment.status).icon}
+                  color={
+                    isExpiredPayment(selectedAppointment)
+                      ? "red"
+                      : getStatusConfig(selectedAppointment.status).color
+                  }
+                  icon={
+                    isExpiredPayment(selectedAppointment) ? (
+                      <CloseCircleOutlined />
+                    ) : (
+                      getStatusConfig(selectedAppointment.status).icon
+                    )
+                  }
                   className="text-sm px-3 py-1"
                 >
-                  {getStatusConfig(selectedAppointment.status).text}
+                  {isExpiredPayment(selectedAppointment)
+                    ? "Hết hạn thanh toán"
+                    : getStatusConfig(selectedAppointment.status).text}
                 </Tag>
               </div>
             </div>
@@ -445,23 +608,44 @@ const AppointmentHistoryPage = () => {
             <div className="border-b pb-3">
               <h4 className="font-semibold text-gray-700 mb-2">Thanh toán</h4>
               <div className="space-y-1 text-sm">
-                <div className="flex justify-between">
+                <div className="flex justify-between gap-4">
                   <span className="text-gray-600">Phương thức thanh toán:</span>
-                  <span className="font-medium">
-                    {selectedAppointment.payment.paymentMethod ===
-                    "PAY_AT_CLINIC"
+                  <span className="font-medium text-right">
+                    {selectedAppointment.payment?.paymentMethod === "PAY_AT_CLINIC"
                       ? "Thanh toán sau tại phòng khám"
-                      : selectedAppointment.payment.paymentMethod}
+                      : selectedAppointment.payment?.paymentMethod || "VNPAY"}
                   </span>
                 </div>
-                <div className="flex justify-between">
+
+                <div className="flex justify-between gap-4">
                   <span className="text-gray-600">Trạng thái thanh toán:</span>
-                  <span className="font-medium">
-                    {selectedAppointment.payment.paymentStatus === "UNPAID"
-                      ? "Chưa thanh toán"
-                      : selectedAppointment.payment.paymentStatus}
+                  <span className="font-medium text-right">
+                    {getPaymentStatusText(
+                      isExpiredPayment(selectedAppointment)
+                        ? "EXPIRED"
+                        : selectedAppointment.payment?.paymentStatus,
+                    )}
                   </span>
                 </div>
+
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-600">Tiền cọc:</span>
+                  <span className="font-medium text-right">
+                    {getDepositAmount(selectedAppointment).toLocaleString("vi-VN")} đ
+                  </span>
+                </div>
+
+                {selectedAppointment.payment?.expireAt &&
+                  selectedAppointment.payment?.paymentStatus !== "PAID" && (
+                    <div className="flex justify-between gap-4">
+                      <span className="text-gray-600">Hạn thanh toán:</span>
+                      <span className="font-medium text-right">
+                        {dayjs(selectedAppointment.payment.expireAt).format(
+                          "YYYY-MM-DD HH:mm:ss",
+                        )}
+                      </span>
+                    </div>
+                  )}
               </div>
             </div>
 
@@ -470,21 +654,23 @@ const AppointmentHistoryPage = () => {
                 Thông tin bệnh nhân
               </h4>
               <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
+                <div className="flex justify-between gap-4">
                   <span className="text-gray-600">Họ và tên:</span>
-                  <span className="font-medium">
-                    {selectedAppointment.patient.fullName}
+                  <span className="font-medium text-right">
+                    {getPatientName(selectedAppointment)}
                   </span>
                 </div>
-                <div className="flex justify-between">
+
+                <div className="flex justify-between gap-4">
                   <span className="text-gray-600">Số điện thoại:</span>
-                  <span className="font-medium">
-                    {selectedAppointment.patient.phone}
+                  <span className="font-medium text-right">
+                    {selectedAppointment?.patient?.phone || "Không có"}
                   </span>
                 </div>
-                <div className="flex justify-between">
+
+                <div className="flex justify-between gap-4">
                   <span className="text-gray-600">Mã phiếu:</span>
-                  <span className="font-medium">
+                  <span className="font-medium text-right">
                     {selectedAppointment._id?.slice(-6).toUpperCase()}
                   </span>
                 </div>
@@ -496,47 +682,51 @@ const AppointmentHistoryPage = () => {
                 Thông tin khám
               </h4>
               <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
+                <div className="flex justify-between gap-4">
                   <span className="text-gray-600">Bác sĩ:</span>
-                  <span className="font-medium">
-                    {selectedAppointment.doctor.name}
+                  <span className="font-medium text-right">
+                    {getDoctorName(selectedAppointment)}
                   </span>
                 </div>
-                <div className="flex justify-between">
+
+                <div className="flex justify-between gap-4">
                   <span className="text-gray-600">Kinh nghiệm:</span>
-                  <span className="font-medium">
-                    {selectedAppointment.doctor.experience_year} năm
+                  <span className="font-medium text-right">
+                    {selectedAppointment?.doctor?.experience_year || 0} năm
                   </span>
                 </div>
-                <div className="flex justify-between">
+
+                <div className="flex justify-between gap-4">
                   <span className="text-gray-600">Thời gian:</span>
-                  <span className="font-medium">
+                  <span className="font-medium text-right">
                     {selectedAppointment.time} -{" "}
                     {dayjs(selectedAppointment.dateTime).format("YYYY-MM-DD")}
                   </span>
                 </div>
-                <div className="flex justify-between">
+
+                <div className="flex justify-between gap-4">
                   <span className="text-gray-600">Địa điểm:</span>
                   <span className="font-medium text-right">
-                    {selectedAppointment.location}
+                    {selectedAppointment.location || "Chưa có thông tin"}
                   </span>
                 </div>
-                <div className="flex justify-between">
+
+                <div className="flex justify-between gap-4">
                   <span className="text-gray-600">Phòng khám:</span>
-                  <span className="font-medium">
-                    {selectedAppointment.room.name}
+                  <span className="font-medium text-right">
+                    {selectedAppointment?.room?.name || "Không có"}
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className="flex flex-wrap justify-between border-b pb-3">
-              <h4 className="font-semibold text-gray-700 mb-2">
+            <div className="flex flex-wrap justify-between border-b pb-3 gap-2">
+              <h4 className="font-semibold text-gray-700">
                 {selectedAppointment.status === "CANCELED"
                   ? "Lý do hủy"
                   : "Lý do khám"}
               </h4>
-              <p className="text-sm text-gray-600 line-clamp-3">
+              <p className="text-sm text-gray-600 line-clamp-3 text-right max-w-[70%]">
                 {selectedAppointment?.status === "CANCELED"
                   ? selectedAppointment.reason || "Không có lý do hủy"
                   : selectedAppointment?.symptoms || "Không có"}
@@ -544,12 +734,10 @@ const AppointmentHistoryPage = () => {
             </div>
 
             <div>
-              <div className="flex justify-between items-center">
-                <span className="font-semibold text-gray-700">
-                  Tổng chi phí:
-                </span>
+              <div className="flex justify-between items-center gap-4">
+                <span className="font-semibold text-gray-700">Tổng chi phí:</span>
                 <span className="text-xl font-bold text-orange-600">
-                  {selectedAppointment.payment.totalAmount} đ
+                  {getTotalAmount(selectedAppointment).toLocaleString("vi-VN")} đ
                 </span>
               </div>
             </div>
@@ -557,7 +745,6 @@ const AppointmentHistoryPage = () => {
         )}
       </Modal>
 
-      {/* Cancel Modal */}
       <Modal
         title="Hủy lịch khám"
         open={cancelModalVisible}
@@ -565,6 +752,7 @@ const AppointmentHistoryPage = () => {
         onCancel={() => {
           setCancelModalVisible(false);
           setCancelReason("");
+          setOtherReason("");
         }}
         okText="Xác nhận hủy"
         okButtonProps={{
@@ -572,7 +760,7 @@ const AppointmentHistoryPage = () => {
           disabled:
             !cancelReason || (cancelReason === "other" && !otherReason.trim()),
         }}
-        loading={isCancelling}
+        confirmLoading={isCancelling}
         cancelText="Đóng"
       >
         {selectedAppointment && (
@@ -583,7 +771,7 @@ const AppointmentHistoryPage = () => {
                 <p className="font-semibold text-red-800 mb-1">Lưu ý:</p>
                 <p className="text-red-600">
                   Bạn có chắc chắn muốn hủy lịch khám với bác sĩ{" "}
-                  <strong> {selectedAppointment.doctor.name}</strong> vào lúc{" "}
+                  <strong>{getDoctorName(selectedAppointment)}</strong> vào lúc{" "}
                   <strong>
                     {selectedAppointment.time} -{" "}
                     {dayjs(selectedAppointment.dateTime).format("YYYY-MM-DD")}
@@ -596,6 +784,7 @@ const AppointmentHistoryPage = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Lý do hủy lịch <span className="text-red-500">*</span>
               </label>
+
               <Select
                 value={cancelReason}
                 onChange={setCancelReason}
