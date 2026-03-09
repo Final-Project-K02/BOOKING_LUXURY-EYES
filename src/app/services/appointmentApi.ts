@@ -31,7 +31,10 @@ export const appointmentApi = createApi({
       ],
     }),
 
-    createBooking: builder.mutation<void, BookingPayload>({
+    createBooking: builder.mutation<
+      { message: string; data: Appointment },
+      BookingPayload
+    >({
       query: (bookingData) => ({
         url: "/appointments",
         method: "POST",
@@ -41,7 +44,11 @@ export const appointmentApi = createApi({
           dateTime: bookingData.dateTime,
           time: bookingData.time,
           room: bookingData.room,
-          patientProfile: bookingData.patientId,
+          totalAmount: bookingData.payment?.totalAmount || 0,
+          location: bookingData.location,
+          symptoms: bookingData.symptoms,
+          patientProfileId: bookingData.patientProfileId,
+          patient: bookingData.patient,
         },
       }),
 
@@ -50,6 +57,25 @@ export const appointmentApi = createApi({
         { type: "AppointmentScheduleId", id: arg.scheduleId },
         { type: "ScheduleId", id: arg.doctor.id },
       ],
+    }),
+
+    createVnpayLink: builder.mutation<
+      {
+        message: string;
+        data: {
+          appointmentId: string;
+          txnRef: string;
+          paymentUrl: string;
+          expireAt: string;
+        };
+      },
+      string
+    >({
+      query: (appointmentId) => ({
+        url: `/payments/vnpay/link/${appointmentId}`,
+        method: "POST",
+      }),
+      invalidatesTags: ["Appointments"],
     }),
 
     cancelAppointment: builder.mutation<
@@ -89,6 +115,7 @@ export const {
   useGetBookingByScheduleIdQuery,
   useGetAppointmentsByDoctorQuery,
   useCreateBookingMutation,
+  useCreateVnpayLinkMutation,
   useCancelAppointmentMutation,
   useCancelAppointmentConfirmMutation,
 } = appointmentApi;

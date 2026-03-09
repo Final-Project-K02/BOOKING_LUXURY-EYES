@@ -16,6 +16,7 @@ import { useNavigate } from "react-router-dom";
 import { useAppSelector } from "../../app/hook";
 import {
   useCreateBookingMutation,
+  useCreateVnpayLinkMutation,
   useGetAppointmentsQuery,
   useGetBookingByScheduleIdQuery,
 } from "../../app/services/appointmentApi";
@@ -30,7 +31,6 @@ import { useGetScheduleDoctorIdQuery } from "../../app/services/scheduleApi";
 import AddPatientModal from "../../components/BookingAppointment/AddPatientModal";
 import DoctorList from "../../components/BookingAppointment/DoctorList";
 import TimeSlotPicker from "../../components/BookingAppointment/TimeSlotPicker";
-import { BLOCK_STATUSES, type BookingPayload } from "../../types/Booking";
 import type { Doctor } from "../../types/Doctor";
 import type {
   CreatePatientInput,
@@ -43,6 +43,7 @@ import type {
   TimeSlotUI,
 } from "../../types/Schedule";
 import type { AppointmentStatus } from "./AppointmentHistoryPage";
+import { BLOCK_STATUSES } from "../../types/Booking";
 
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
@@ -120,8 +121,10 @@ const BookingAppointmentPage = () => {
 
   // Patient profile
   const { data: patientProfileResponse } = useGetPatientProfileQuery();
-  const PatientProData: PatientResponse[] = patientProfileResponse?.data ?? [];
-
+  const PatientProData: PatientResponse[] = useMemo(
+    () => patientProfileResponse?.data ?? [],
+    [patientProfileResponse?.data],
+  );
   const [createPatientProfile, { isLoading: isCreatingPatient }] =
     useCreatePatientProfileMutation();
 
@@ -129,8 +132,15 @@ const BookingAppointmentPage = () => {
     useUpdatePatientProfileMutation();
   const [deletePatientProfile] = useDeletePatientProfileMutation();
 
-  const [createBooking] = useCreateBookingMutation();
+  const [createBooking, { isLoading: isCreatingBooking }] =
+    useCreateBookingMutation();
 
+  const [createVnpayLink, { isLoading: isCreatingPaymentLink }] =
+    useCreateVnpayLinkMutation();
+
+  const totalAmount = Number(selectedDoctor?.price) || 0;
+  const depositAmount = Math.ceil(totalAmount * 0.4);
+  const isSubmitting = isCreatingBooking || isCreatingPaymentLink;
   const [showAddPatientModal, setShowAddPatientModal] = useState(false);
   const [editingPatient, setEditingPatient] = useState<PatientResponse | null>(
     null,
@@ -270,66 +280,72 @@ const BookingAppointmentPage = () => {
     return current && current < dayjs().startOf("day");
   };
 
-  //   // Check for booking conflicts
-  //   const slotsWithState = useMemo<TimeSlotUI[]>(() => {
-  //     if (!scheduleItem?.timeSlots || !getBookingBySchedIdData) {
-  //       return [];
-  //     }
+  // Check for booking conflicts
+  const slotsWithState = useMemo<TimeSlotUI[]>(() => {
+    if (!scheduleItem?.timeSlots || !getBookingBySchedIdData) {
+      return [];
+    }
 
-  //     const today = dayjs().startOf("day");
+    const today = dayjs().startOf("day");
 
-  //     return scheduleItem.timeSlots
-  //       .filter((slot) => {
-  //         const slotDay = dayjs(slot.date).startOf("day");
-  //         return slotDay.isAfter(today);
-  //       })
-  //       .map((slot) => {
-  //         const slotDate = dayjs(slot.date).format("YYYY-MM-DD");
+    return scheduleItem.timeSlots
+      .filter((slot) => {
+        const slotDay = dayjs(slot.date).startOf("day");
+        return slotDay.isAfter(today);
+      })
+      .map((slot) => {
+        const slotDate = dayjs(slot.date).format("YYYY-MM-DD");
 
-  //         const doctorBlocked = getBookingBySchedIdData.some((apm) => {
-  //           return (
-  //             dayjs(apm.dateTime).format("YYYY-MM-DD") === slotDate &&
-  //             apm.time === slot.time &&
-  //             BLOCK_STATUSES.includes(apm.status)
-  //           );
-  //         });
+        const doctorBlocked = getBookingBySchedIdData.some((apm) => {
+          return (
+            dayjs(apm.dateTime).format("YYYY-MM-DD") === slotDate &&
+            apm.time === slot.time &&
+            BLOCK_STATUSES.includes(apm.status)
+          );
+        });
 
-  //  const patientBlocked = getBookingUserData.some((apm) => {
-  //   const apmPatientId =
-  //     typeof apm.patient === "string" ? apm.patient : apm.patient?._id;
+        const patientBlocked = getBookingUserData.some((apm) => {
+          const apmPatientId =
+            typeof apm.patient === "string" ? apm.patient : apm.patient?._id;
 
-  //   return (
-  //     apmPatientId === selectedPerson &&
-  //     dayjs(apm.dateTime).format("YYYY-MM-DD") === slotDate &&
-  //     apm.time === slot.time &&
-  //     BLOCK_STATUSES.includes(apm.status)
-  //   );
-  // });
+          return (
+            apmPatientId === selectedPerson &&
+            dayjs(apm.dateTime).format("YYYY-MM-DD") === slotDate &&
+            apm.time === slot.time &&
+            BLOCK_STATUSES.includes(apm.status)
+          );
+        });
 
-  //         const disabled =
-  //           slot.status !== "AVAILABLE" || doctorBlocked || patientBlocked;
+        const disabled =
+          slot.status !== "AVAILABLE" || doctorBlocked || patientBlocked;
 
-  //         return {
-  //           ...slot,
-  //           disabled,
-  //           disabledReason: doctorBlocked
-  //             ? "Khung giờ đã được đặt"
-  //             : patientBlocked
-  //               ? "Bạn đã có lịch cùng khung giờ"
-  //               : slot.status !== "AVAILABLE"
-  //                 ? "Khung giờ không khả dụng"
-  //                 : undefined,
-  //         };
-  //       });
-  //   }, [scheduleItem?.timeSlots, getBookingUserData, getBookingBySchedIdData]);
+        return {
+          ...slot,
+          disabled,
+          disabledReason: doctorBlocked
+            ? "Khung giờ đã được đặt"
+            : patientBlocked
+              ? "Bạn đã có lịch cùng khung giờ"
+              : slot.status !== "AVAILABLE"
+                ? "Khung giờ không khả dụng"
+                : undefined,
+        };
+      });
+  }, [
+    scheduleItem?.timeSlots,
+    getBookingUserData,
+    getBookingBySchedIdData,
+    selectedPerson,
+  ]);
 
   // Confirm booking
   const handleConfirmBooking = async () => {
     if (!user?._id || !isAuthenticated) {
       message.error("Vui lòng đăng nhập");
       nav("/auth/login");
-      return;
+      return false;
     }
+
     if (!selectedPerson) {
       message.error("Vui lòng chọn người tới khám");
       return false;
@@ -340,75 +356,93 @@ const BookingAppointmentPage = () => {
       return false;
     }
 
-    if (!selectedSchedule) {
+    if (!selectedSchedule || !scheduleItem?._id) {
       message.error("Vui lòng chọn lịch khám");
       return false;
     }
 
     try {
       const payload = {
-        userId: user?._id ?? "", // Chưa được gửi trong API hiện tại
+        userId: user?._id ?? "",
         scheduleId: scheduleItem._id,
-        scheduleSlotId: Number(selectedSchedule.scheduleSlotId) || 0, // Chưa được gửi trong API hiện tại
+        scheduleSlotId: Number(selectedSchedule.scheduleSlotId) || 0,
         dateTime: selectedSchedule?.date ?? "",
         time: selectedSchedule?.time ?? "",
-        blockTime: 30, // Chưa được gửi trong API hiện tại
-        location: selectedSchedule?.location ?? "", // Chưa được gửi trong API hiện tại
-        status: "PENDING" as AppointmentStatus, // Chưa được gửi trong API hiện tại
-        appointmentMethod: "DIRECT", // Chưa được gửi trong API hiện tại
-        symptoms: symptoms, // Chưa được gửi trong API hiện tại
+        blockTime: 30,
+        location: selectedSchedule?.location ?? "",
+        status: "PENDING" as AppointmentStatus,
+        appointmentMethod: "DIRECT",
+        symptoms,
         payment: {
-          // Chưa được gửi trong API hiện tại
-          totalAmount: Number(selectedDoctor?.price) || 0,
-          paymentMethod: "PAY_AT_CLINIC",
+          totalAmount,
+          paymentMethod: "VNPAY",
           paymentStatus: "UNPAID",
         },
         doctor: {
           id: selectedDoctor?._id ?? "",
-          name: selectedDoctor?.name ?? "", // API chỉ lấy id
-          avatar: selectedDoctor?.avatar ?? "", // API chỉ lấy id
-          experience_year: Number(selectedDoctor?.experience_year) || 0, // API chỉ lấy id
+          name: selectedDoctor?.name ?? "",
+          avatar: selectedDoctor?.avatar ?? "",
+          experience_year: Number(selectedDoctor?.experience_year) || 0,
         },
         room: {
           id: scheduleItem.roomId ?? 1,
           name: scheduleItem.roomName,
         },
-        // API đang map trường 'patient' trong body request từ 'bookingData.patientId'
-        // Nên object patient chi tiết ở dưới đang không được dùng
-        patient: {
-          fullName:
-            PatientProData.find((p) => p._id === selectedPerson)?.fullName ??
-            user?.fullName ??
-            "",
-          dateOfBirth:
-            PatientProData.find((p) => p._id === selectedPerson)?.dateOfBirth ??
-            user?.dateOfBirth ??
-            "",
-          gender:
-            PatientProData.find((p) => p._id === selectedPerson)?.gender ??
-            user?.gender ??
-            "",
-          phone:
-            PatientProData.find((p) => p._id === selectedPerson)?.phone ??
-            user?.phone ??
-            "",
-        },
-        patientId: selectedPerson, // Thêm trường này để API lấy được ID bệnh nhân
-      } as unknown as BookingPayload;
+        patientProfileId: selectedPerson || undefined,
+      };
 
-      // check booking data
+      if (
+        !confirm(
+          `Xác nhận đặt lịch khám?\n\nTiền cọc cần thanh toán: ${depositAmount.toLocaleString(
+            "vi-VN",
+          )} đ\nBạn có 5 phút để hoàn tất thanh toán.`,
+        )
+      ) {
+        return false;
+      }
 
-      if (!confirm("Xác nhận đặt lịch khám!")) return false;
+      const bookingRes = await createBooking(payload).unwrap();
+      const appointmentId = bookingRes?.data?._id;
 
-      await createBooking(payload);
-      message.success("Đặt lịch thành công!");
-      nav("/lich-kham");
-    } catch (error) {
+      if (!appointmentId) {
+        message.success("Đặt lịch thành công");
+        nav("/lich-kham");
+        return true;
+      }
+
+      try {
+        const payRes = await createVnpayLink(appointmentId).unwrap();
+        const paymentUrl = payRes?.data?.paymentUrl;
+
+        if (!paymentUrl) {
+          message.warning(
+            "Lịch đã được tạo. Bạn có thể thanh toán trong trang Lịch khám trong vòng 5 phút.",
+          );
+          nav("/lich-kham");
+          return true;
+        }
+
+        message.loading("Đang chuyển tới cổng thanh toán...", 1);
+        console.log("paymentUrl =", paymentUrl);
+        window.location.href = paymentUrl;
+        return true;
+      } catch (paymentError: any) {
+        console.log(paymentError);
+        message.warning(
+          paymentError?.data?.message ||
+            "Lịch đã được tạo. Bạn có thể thanh toán trong trang Lịch khám trong vòng 5 phút.",
+        );
+        nav("/lich-kham");
+        return true;
+      }
+    } catch (error: any) {
       console.log(error);
-      message.error("Đặt lịch thất bại, vui lòng thử lại sau");
+      message.error(
+        error?.data?.message || "Đặt lịch thất bại, vui lòng thử lại sau",
+      );
     }
 
-    return true;
+    return false;
   };
 
   if (isLoading) return <div className="text-center mt-3">Loading...</div>;
@@ -627,7 +661,7 @@ const BookingAppointmentPage = () => {
                   <TimeSlotPicker
                     scheduleItem={{
                       ...scheduleItem,
-                      // timeSlots: slotsWithState,
+                      timeSlots: slotsWithState,
                     }}
                     selectedDate={selectedDate}
                     setSelectedDate={setSelectedDate}
@@ -708,14 +742,40 @@ const BookingAppointmentPage = () => {
                   </div>
 
                   {/* Confirm Button */}
+                  <div className="space-y-3 border-t pt-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-500">
+                        Tổng phí khám
+                      </span>
+                      <span className="font-semibold text-gray-800">
+                        {totalAmount.toLocaleString("vi-VN")} đ
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-500">
+                        Tiền cọc (40%)
+                      </span>
+                      <span className="font-bold text-orange-500">
+                        {depositAmount.toLocaleString("vi-VN")} đ
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-gray-500">
+                      Sau khi đặt lịch, bạn sẽ được chuyển tới trang thanh toán.
+                      Nếu chưa thanh toán ngay, bạn vẫn có thể thanh toán lại
+                      trong vòng 5 phút tại trang lịch khám.
+                    </p>
+                  </div>
                   <Button
                     type="primary"
                     size="large"
                     block
+                    loading={isSubmitting}
                     className="bg-orange-500 hover:bg-orange-600 border-0"
                     onClick={handleConfirmBooking}
                   >
-                    Xác nhận đặt khám
+                    Đặt lịch & thanh toán cọc
                   </Button>
                 </div>
               ) : (
