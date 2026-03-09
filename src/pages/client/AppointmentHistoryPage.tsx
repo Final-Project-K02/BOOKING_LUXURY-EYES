@@ -64,6 +64,7 @@ const AppointmentHistoryPage = () => {
       refetchOnReconnect: true,
       refetchOnMountOrArgChange: true,
     },
+
   );
 
   const getAppointments: Appointment[] = data?.data ?? [];
@@ -132,7 +133,18 @@ const AppointmentHistoryPage = () => {
   };
 
   const getPatientName = (appointment: Appointment) => {
-    return appointment?.patient?.fullName || "Không rõ";
+    // API sometimes returns a plain ID in `patient`, sometimes an object in `patientProfile`
+    if (appointment.patientProfile?.fullName) return appointment.patientProfile.fullName;
+    if (typeof appointment.patient === "object" && appointment.patient?.fullName)
+      return appointment.patient.fullName;
+    return "Không rõ";
+  };
+
+  const getPatientPhone = (appointment: Appointment) => {
+    if (appointment.patientProfile?.phone) return appointment.patientProfile.phone;
+    if (typeof appointment.patient === "object" && appointment.patient?.phone)
+      return appointment.patient.phone;
+    return "Không có";
   };
 
   const getTotalAmount = (appointment: Appointment) => {
@@ -260,6 +272,7 @@ const AppointmentHistoryPage = () => {
       (apm) =>
         (apm.status === "CANCELED" || apm.status === "REQUEST-CANCELED") &&
         dayjs(apm.updatedAt).isSame(dayjs(), "month"),
+
     ).length;
 
     if (currentMonthCanceledCount >= 4) {
@@ -447,6 +460,7 @@ const AppointmentHistoryPage = () => {
                             </div>
 
                             <div className="flex items-center gap-2 text-sm">
+
                               <EnvironmentOutlined className="text-gray-400" />
                               <span className="truncate">
                                 {appointment.location || "Chưa có thông tin"}
@@ -456,6 +470,7 @@ const AppointmentHistoryPage = () => {
                             <div className="flex items-center gap-2 text-sm">
                               <UserOutlined className="text-gray-400" />
                               <span>{getPatientName(appointment)}</span>
+
                             </div>
 
                             <div className="flex items-center gap-2 text-sm">
@@ -663,13 +678,14 @@ const AppointmentHistoryPage = () => {
                   <span className="text-gray-600">Họ và tên:</span>
                   <span className="font-medium text-right">
                     {getPatientName(selectedAppointment)}
+
                   </span>
                 </div>
 
                 <div className="flex justify-between gap-4">
                   <span className="text-gray-600">Số điện thoại:</span>
                   <span className="font-medium text-right">
-                    {selectedAppointment?.patient?.phone || "Không có"}
+                    {getPatientPhone(selectedAppointment)}
                   </span>
                 </div>
 

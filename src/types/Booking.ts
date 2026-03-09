@@ -42,12 +42,13 @@ export interface BookingPayload {
     name: string;
   };
 
-  patient: {
+  patient?: {
     fullName: string;
     dateOfBirth: string;
     gender: string;
     phone: string;
   };
+  patientProfileId?: string;
 }
 
 export interface Appointment extends BookingPayload {
@@ -70,6 +71,7 @@ export interface Appointment extends BookingPayload {
 
   patient:
     | BookingPayload["patient"]
+    | string
     | {
         _id?: string;
         fullName?: string;
@@ -77,6 +79,12 @@ export interface Appointment extends BookingPayload {
         dateOfBirth?: string;
         gender?: string;
       };
+
+  patientProfile?: {
+    _id?: string;
+    fullName?: string;
+    phone?: string;
+  };
 
   room: {
     id?: number;

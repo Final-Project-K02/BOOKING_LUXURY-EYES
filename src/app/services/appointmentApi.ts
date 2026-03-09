@@ -47,8 +47,11 @@ export const appointmentApi = createApi({
           totalAmount: bookingData.payment?.totalAmount || 0,
           location: bookingData.location,
           symptoms: bookingData.symptoms,
+          patientProfileId: bookingData.patientProfileId,
+          patient: bookingData.patient,
         },
       }),
+
       invalidatesTags: (_r, _e, arg) => [
         "Appointments",
         { type: "AppointmentScheduleId", id: arg.scheduleId },
@@ -56,24 +59,24 @@ export const appointmentApi = createApi({
       ],
     }),
 
-  createVnpayLink: builder.mutation<
-  {
-    message: string;
-    data: {
-      appointmentId: string;
-      txnRef: string;
-      paymentUrl: string;
-      expireAt: string;
-    };
-  },
-  string
->({
-  query: (appointmentId) => ({
-    url: `/payments/vnpay/link/${appointmentId}`,
-    method: "POST",
-  }),
-  invalidatesTags: ["Appointments"],
-}),
+    createVnpayLink: builder.mutation<
+      {
+        message: string;
+        data: {
+          appointmentId: string;
+          txnRef: string;
+          paymentUrl: string;
+          expireAt: string;
+        };
+      },
+      string
+    >({
+      query: (appointmentId) => ({
+        url: `/payments/vnpay/link/${appointmentId}`,
+        method: "POST",
+      }),
+      invalidatesTags: ["Appointments"],
+    }),
 
     cancelAppointment: builder.mutation<
       Appointment,

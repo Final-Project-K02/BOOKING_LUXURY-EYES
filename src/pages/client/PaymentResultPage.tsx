@@ -10,7 +10,7 @@ const PaymentResultPage = () => {
   const successParam = searchParams.get("success");
   const txnRef = searchParams.get("txnRef");
 
-  const paidAmount = searchParams.get("paidAmount");
+  const paidAmount = searchParams.get("depositAmount");
   const paidAt = searchParams.get("paidAt");
 
   const success = successParam === "true";
