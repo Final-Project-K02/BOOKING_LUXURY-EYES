@@ -57,16 +57,14 @@ const AppointmentHistoryPage = () => {
 
   const user = useAppSelector((state) => state.auth.user);
 
-  const {
-    data,
-    isLoading,
-    isError,
-    refetch,
-  } = useGetAppointmentsQuery(user?._id ?? skipToken, {
-    refetchOnFocus: true,
-    refetchOnReconnect: true,
-    refetchOnMountOrArgChange: true,
-  });
+  const { data, isLoading, isError, refetch } = useGetAppointmentsQuery(
+    user?._id ?? skipToken,
+    {
+      refetchOnFocus: true,
+      refetchOnReconnect: true,
+      refetchOnMountOrArgChange: true,
+    },
+  );
 
   const getAppointments: Appointment[] = data?.data ?? [];
 
@@ -128,7 +126,9 @@ const AppointmentHistoryPage = () => {
   };
 
   const getDoctorName = (appointment: Appointment) => {
-    return appointment?.doctor?.name || appointment?.doctor?.fullName || "Bác sĩ";
+    return (
+      appointment?.doctor?.name || appointment?.doctor?.fullName || "Bác sĩ"
+    );
   };
 
   const getPatientName = (appointment: Appointment) => {
@@ -403,7 +403,8 @@ const AppointmentHistoryPage = () => {
                                 {getDoctorName(appointment)}
                               </h3>
                               <p className="text-sm text-blue-600">
-                                {appointment?.room?.name || "Chưa rõ phòng khám"}
+                                {appointment?.room?.name ||
+                                  "Chưa rõ phòng khám"}
                               </p>
                               <p className="text-xs text-gray-500 mt-1">
                                 Mã phiếu:{" "}
@@ -478,9 +479,9 @@ const AppointmentHistoryPage = () => {
                                   <div className="text-sm text-gray-600">
                                     Tiền cọc:{" "}
                                     <span className="font-semibold">
-                                      {getDepositAmount(appointment).toLocaleString(
-                                        "vi-VN",
-                                      )}{" "}
+                                      {getDepositAmount(
+                                        appointment,
+                                      ).toLocaleString("vi-VN")}{" "}
                                       đ
                                     </span>
                                   </div>
@@ -611,7 +612,8 @@ const AppointmentHistoryPage = () => {
                 <div className="flex justify-between gap-4">
                   <span className="text-gray-600">Phương thức thanh toán:</span>
                   <span className="font-medium text-right">
-                    {selectedAppointment.payment?.paymentMethod === "PAY_AT_CLINIC"
+                    {selectedAppointment.payment?.paymentMethod ===
+                    "PAY_AT_CLINIC"
                       ? "Thanh toán sau tại phòng khám"
                       : selectedAppointment.payment?.paymentMethod || "VNPAY"}
                   </span>
@@ -631,7 +633,10 @@ const AppointmentHistoryPage = () => {
                 <div className="flex justify-between gap-4">
                   <span className="text-gray-600">Tiền cọc:</span>
                   <span className="font-medium text-right">
-                    {getDepositAmount(selectedAppointment).toLocaleString("vi-VN")} đ
+                    {getDepositAmount(selectedAppointment).toLocaleString(
+                      "vi-VN",
+                    )}{" "}
+                    đ
                   </span>
                 </div>
 
@@ -735,9 +740,12 @@ const AppointmentHistoryPage = () => {
 
             <div>
               <div className="flex justify-between items-center gap-4">
-                <span className="font-semibold text-gray-700">Tổng chi phí:</span>
+                <span className="font-semibold text-gray-700">
+                  Tổng chi phí:
+                </span>
                 <span className="text-xl font-bold text-orange-600">
-                  {getTotalAmount(selectedAppointment).toLocaleString("vi-VN")} đ
+                  {getTotalAmount(selectedAppointment).toLocaleString("vi-VN")}{" "}
+                  đ
                 </span>
               </div>
             </div>
