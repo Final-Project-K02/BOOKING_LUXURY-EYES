@@ -100,7 +100,7 @@ export const appointmentApi = createApi({
       query: ({ id, reason }) => ({
         url: `appointments/${id}`,
         method: "PATCH",
-        body: { status: "REQUEST-CANCELED", reason },
+        body: { status: "CANCELED", reason },
       }),
       invalidatesTags: (_r, _e, arg) => [
         "Appointments",

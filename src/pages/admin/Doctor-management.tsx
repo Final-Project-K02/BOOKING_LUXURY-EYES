@@ -43,6 +43,8 @@ interface DoctorFormValues {
   avatar?: string;
   price: number;
   experience_year: number;
+  email?: string;
+  phone?: string;
   description?: string;
   email?: string;
   phone?: string;
@@ -57,6 +59,13 @@ const DoctorManagement: React.FC = () => {
 
   const [form] = Form.useForm<DoctorFormValues>();
   const [filters, setFilters] = useState<DoctorFilter>({});
+
+  const getPriceByExperience = (experienceYear: number): number => {
+    if (experienceYear <= 3) return 150000;
+    if (experienceYear <= 7) return 250000;
+    if (experienceYear <= 15) return 350000;
+    return 500000;
+  };
 
   const fetchDoctors = async () => {
     try {
@@ -83,7 +92,7 @@ const DoctorManagement: React.FC = () => {
     try {
       await api.patch(`/doctors/${doctor._id}/status`);
       message.success(
-        doctor.is_active ? "Tắt bác sĩ thành công" : "Bật bác sĩ thành công"
+        doctor.is_active ? "Tắt bác sĩ thành công" : "Bật bác sĩ thành công",
       );
       fetchDoctors();
     } catch {
@@ -170,29 +179,30 @@ const DoctorManagement: React.FC = () => {
   };
 
   const columns: ColumnsType<Doctor> = [
-    
     { title: "Tên bác sĩ", dataIndex: "name" },
     {
-  title: "Ảnh",
-  dataIndex: "avatar",
-  width: 90,
-  render: (avatarUrl: string | undefined, record: Doctor) => {
-    if (avatarUrl) {
-      return (
-        <Image
-          src={avatarUrl}
-          width={48}
-          height={48}
-          style={{ objectFit: "cover", borderRadius: 8 }}
-          preview={{ src: avatarUrl }}
-          fallback="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48'%3E%3Crect width='100%25' height='100%25' fill='%23eee'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23999' font-size='10'%3ENo%3C/text%3E%3C/svg%3E"
-        />
-      );
-    }
+      title: "Ảnh",
+      dataIndex: "avatar",
+      width: 90,
+      render: (avatarUrl: string | undefined, record: Doctor) => {
+        if (avatarUrl) {
+          return (
+            <Image
+              src={avatarUrl}
+              width={48}
+              height={48}
+              style={{ objectFit: "cover", borderRadius: 8 }}
+              preview={{ src: avatarUrl }}
+              fallback="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48'%3E%3Crect width='100%25' height='100%25' fill='%23eee'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23999' font-size='10'%3ENo%3C/text%3E%3C/svg%3E"
+            />
+          );
+        }
 
-    return <Avatar size={48}>{record?.name?.[0]?.toUpperCase() || "?"}</Avatar>;
-  },
-},
+        return (
+          <Avatar size={48}>{record?.name?.[0]?.toUpperCase() || "?"}</Avatar>
+        );
+      },
+    },
     {
       title: "Giá khám",
       dataIndex: "price",
@@ -207,7 +217,7 @@ const DoctorManagement: React.FC = () => {
       title: "Mô tả",
       dataIndex: "description",
       ellipsis: true,
-      render: (text: string) => text || "—",
+      render: (text) => text || "—",
     },
     {
       title: "Email",
@@ -222,28 +232,32 @@ const DoctorManagement: React.FC = () => {
     {
       title: "Trạng thái",
       dataIndex: "is_active",
-      render: (active: boolean) =>
+      render: (active) =>
         active ? (
           <span style={{ color: "green" }}>Đang hoạt động</span>
         ) : (
           <span style={{ color: "red" }}>Đã tắt</span>
         ),
     },
+
     {
       title: "Hành động",
       render: (_, record) => (
         <Space>
+          {/* Sửa */}
           <Button
             type="link"
             onClick={() => {
               setEditingDoctor(record);
-              form.setFieldsValue(record);
+              const autoPrice = getPriceByExperience(record.experience_year);
+              form.setFieldsValue({ ...record, price: autoPrice });
               setOpenModal(true);
             }}
           >
             Sửa
           </Button>
 
+          {/* Tắt / Bật */}
           <Popconfirm
             title={
               record.is_active
@@ -257,6 +271,7 @@ const DoctorManagement: React.FC = () => {
             </Button>
           </Popconfirm>
 
+          {/* Xoá – chỉ cho xoá khi đã tắt */}
           <Popconfirm
             title="Bạn chắc chắn muốn xoá?"
             onConfirm={() => handleDelete(record._id)}
@@ -282,18 +297,25 @@ const DoctorManagement: React.FC = () => {
             setOpenModal(true);
             setEditingDoctor(null);
             form.resetFields();
+            form.setFieldsValue({ price: 150000 });
           }}
         >
           Thêm bác sĩ
         </Button>
       }
     >
-      <Form layout="inline" style={{ marginBottom: 16 }} onFinish={fetchDoctors}>
+      <Form
+        layout="inline"
+        style={{ marginBottom: 16 }}
+        onFinish={() => fetchDoctors()}
+      >
         <Form.Item label="Tên bác sĩ">
           <Input
             placeholder="Nhập tên..."
             allowClear
-            onChange={(e) => setFilters({ ...filters, keyword: e.target.value })}
+            onChange={(e) =>
+              setFilters({ ...filters, keyword: e.target.value })
+            }
           />
         </Form.Item>
 
@@ -360,8 +382,33 @@ const DoctorManagement: React.FC = () => {
         okText="Lưu"
         okButtonProps={{ disabled: uploadingAvatar }}
       >
-        <Form layout="vertical" form={form} onFinish={handleSubmit}>
-          <Form.Item label="Tên bác sĩ" name="name" rules={[{ required: true }]}>
+        <Form
+          layout="vertical"
+          form={form}
+          onFinish={handleSubmit}
+          onValuesChange={(changedValues, allValues) => {
+            if (
+              Object.prototype.hasOwnProperty.call(
+                changedValues,
+                "experience_year",
+              )
+            ) {
+              const experienceYear = Number(allValues.experience_year ?? 0);
+              if (!Number.isNaN(experienceYear)) {
+                form.setFieldValue(
+                  "price",
+                  getPriceByExperience(experienceYear),
+                );
+              }
+            }
+          }}
+          initialValues={{ price: 150000 }}
+        >
+          <Form.Item
+            label="Tên bác sĩ"
+            name="name"
+            rules={[{ required: true }]}
+          >
             <Input />
           </Form.Item>
 
@@ -417,8 +464,24 @@ const DoctorManagement: React.FC = () => {
             </div>
           </Form.Item>
 
-          <Form.Item label="Giá khám" name="price" rules={[{ required: true }]}>
+          <Form.Item
+            label="Số năm kinh nghiệm"
+            name="experience_year"
+            rules={[{ required: true }]}
+          >
             <InputNumber style={{ width: "100%" }} min={0} />
+          </Form.Item>
+
+          <Form.Item label="Giá khám" name="price" rules={[{ required: true }]}>
+            <InputNumber
+              style={{ width: "100%" }}
+              min={0}
+              disabled
+              formatter={(value) =>
+                value ? `${Number(value).toLocaleString("vi-VN")} đ` : ""
+              }
+              parser={(value) => Number(value?.replace(/\D/g, "") ?? 0)}
+            />
           </Form.Item>
 
           <Form.Item label="Email" name="email">
@@ -427,14 +490,6 @@ const DoctorManagement: React.FC = () => {
 
           <Form.Item label="Số điện thoại" name="phone">
             <Input />
-          </Form.Item>
-
-          <Form.Item
-            label="Số năm kinh nghiệm"
-            name="experience_year"
-            rules={[{ required: true }]}
-          >
-            <InputNumber style={{ width: "100%" }} min={0} />
           </Form.Item>
 
           <Form.Item label="Mô tả" name="description">

@@ -24,7 +24,7 @@ export const authService = {
     return api.post("/auth/send-forgot", payload);
   },
 
-  resetPassword: async (payload: { token: string; password: string }) => {
+  resetPassword: async (payload: { token: string; newPassword: string }) => {
     return api.post("/auth/forgot-password", payload);
   },
 };

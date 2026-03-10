@@ -5,19 +5,18 @@ import {
   MedicineBoxOutlined,
   RightOutlined,
   SafetyOutlined,
-  SearchOutlined,
   TeamOutlined,
 } from "@ant-design/icons";
-import { Avatar, Button, Card, Input, Tag, message } from "antd";
+import { Avatar, Button, Card, Tag, message } from "antd";
+import dayjs from "dayjs";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import api from "../../api";
 import { useAppSelector } from "../../app/hook";
 import { useGetDoctorsQuery } from "../../app/services/doctorApi";
 import banner from "../../assets/imgs/banner.png";
 import AuthModal from "../../components/auth/AuthModal";
 import type { Doctor } from "../../types/Doctor";
-import api from "../../api";
-import dayjs from "dayjs";
 
 type ScheduleApi = {
   _id: string;
@@ -143,7 +142,8 @@ const HomePage = () => {
               (s.timeSlots || []).forEach((ts) => {
                 const slotDay = dayjs(ts.date);
                 const isFutureOrToday =
-                  slotDay.isSame(dayjs(), "day") || slotDay.isAfter(dayjs(), "day");
+                  slotDay.isSame(dayjs(), "day") ||
+                  slotDay.isAfter(dayjs(), "day");
 
                 const isAvailable =
                   String(ts.status || "").toUpperCase() === "AVAILABLE";
@@ -201,7 +201,9 @@ const HomePage = () => {
     const q = searchDoctor.trim().toLowerCase();
     if (!q) return doctorsWithSchedule;
     return doctorsWithSchedule.filter((d) =>
-      String(d.name || "").toLowerCase().includes(q),
+      String(d.name || "")
+        .toLowerCase()
+        .includes(q),
     );
   }, [doctorsWithSchedule, searchDoctor]);
 
@@ -240,7 +242,10 @@ const HomePage = () => {
                 >
                   Đặt lịch ngay
                 </Button>
-                <Button size="large" className="h-12 px-8 text-base font-medium">
+                <Button
+                  size="large"
+                  className="h-12 px-8 text-base font-medium"
+                >
                   Tìm hiểu thêm
                 </Button>
               </div>
@@ -294,7 +299,9 @@ const HomePage = () => {
                   <h3 className="text-xl font-bold text-gray-900 mb-1">
                     Đặt khám online
                   </h3>
-                  <p className="text-gray-600">Đặt lịch nhanh chóng, tiện lợi</p>
+                  <p className="text-gray-600">
+                    Đặt lịch nhanh chóng, tiện lợi
+                  </p>
                 </div>
                 <RightOutlined className="text-gray-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
               </div>
@@ -358,7 +365,9 @@ const HomePage = () => {
               <div
                 key={(doctor as any)._id}
                 onClick={() =>
-                  handleNavigateWithAuth(`/dat-lich-kham?doctorId=${(doctor as any)._id}`)
+                  handleNavigateWithAuth(
+                    `/dat-lich-kham?doctorId=${(doctor as any)._id}`,
+                  )
                 }
                 className="group cursor-pointer bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:-translate-y-1 overflow-hidden"
               >
@@ -501,8 +510,6 @@ const HomePage = () => {
 
       {/* Doctors Section (existing) */}
       <div className="container mx-auto px-4 py-24">
-    
-
         <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
           {experiencedDoctors.slice(0, 3).map((doctor: any) => (
             <div
