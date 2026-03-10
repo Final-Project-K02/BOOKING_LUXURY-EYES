@@ -9,7 +9,6 @@ import {
   Space,
   Table,
   Tag,
-  TimePicker,
   message,
   Popconfirm,
 } from "antd";
@@ -48,7 +47,7 @@ interface FormValues {
   roomId: number;
   roomName: string;
   date?: Dayjs;
-  time?: Dayjs;
+  times?: string[]; // Chọn nhiều giờ cùng lúc
 }
 
 const sortTimeSlots = (slots: TimeSlot[]) => {
@@ -87,6 +86,35 @@ const isBookedLikeStatus = (status?: string) => {
   return normalized !== "" && normalized !== "AVAILABLE";
 };
 
+// Tạo danh sách các khung giờ trong ngày (mỗi 30 phút)
+// Giờ làm việc: 7h30-12h00 (sáng), 13h30-17h30 (chiều)
+const generateTimeOptions = () => {
+  const options: { value: string; label: string }[] = [];
+
+  // Ca sáng: 07:30 - 11:30
+  for (let h = 7; h <= 11; h++) {
+    const startMin = h === 7 ? 30 : 0; // Bắt đầu từ 7:30
+    for (let m = startMin; m < 60; m += 30) {
+      const timeStr = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+      options.push({ value: timeStr, label: timeStr });
+    }
+  }
+
+  // Ca chiều: 13:30 - 17:30
+  for (let h = 13; h <= 17; h++) {
+    const startMin = h === 13 ? 30 : 0; // Bắt đầu từ 13:30
+    const endMin = h === 17 ? 30 : 60; // Kết thúc ở 17:30
+    for (let m = startMin; m < endMin; m += 30) {
+      const timeStr = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+      options.push({ value: timeStr, label: timeStr });
+    }
+  }
+
+  return options;
+};
+
+const TIME_OPTIONS = generateTimeOptions();
+
 const ScheduleManagement = () => {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -101,6 +129,7 @@ const ScheduleManagement = () => {
   const [tempTimeSlots, setTempTimeSlots] = useState<TimeSlot[]>([]);
   const [form] = Form.useForm<FormValues>();
   const selectedDoctorId = Form.useWatch("doctorId", form);
+  const selectedDate = Form.useWatch("date", form);
 
   const doctorMap = useMemo<Record<string, Doctor>>(() => {
     const map: Record<string, Doctor> = {};
@@ -155,6 +184,28 @@ const ScheduleManagement = () => {
       };
     });
   }, [roomAssignedDoctorMap, selectedDoctorId]);
+
+  // Tính toán các khung giờ có thể chọn (disable những giờ đã có trong ngày)
+  const availableTimeOptions = useMemo(() => {
+    if (!selectedDate || !selectedDoctorId) {
+      return TIME_OPTIONS;
+    }
+
+    const dateKey = selectedDate.format("YYYY-MM-DD");
+
+    // Lấy các khung giờ đã có của bác sĩ trong ngày đó
+    const usedTimes = new Set(
+      tempTimeSlots
+        .filter((slot) => getDateKey(slot.date) === dateKey)
+        .map((slot) => slot.time),
+    );
+
+    // Disable các option đã được sử dụng
+    return TIME_OPTIONS.map((opt) => ({
+      ...opt,
+      disabled: usedTimes.has(opt.value),
+    }));
+  }, [selectedDate, selectedDoctorId, tempTimeSlots]);
 
   const getVisibleSlots = (slots: TimeSlot[]) => {
     return slots.filter((slot) => {
@@ -215,7 +266,7 @@ const ScheduleManagement = () => {
 
   const addTimeSlot = () => {
     const date = form.getFieldValue("date");
-    const time = form.getFieldValue("time");
+    const times = form.getFieldValue("times"); // Array of time strings
     const roomId = form.getFieldValue("roomId");
     const roomName = form.getFieldValue("roomName");
 
@@ -224,49 +275,74 @@ const ScheduleManagement = () => {
       return;
     }
 
-    if (!date || !time) {
-      message.warning("Vui lòng nhập đủ Ngày và Giờ bắt đầu!");
+    if (!date) {
+      message.warning("Vui lòng chọn ngày!");
       return;
     }
 
-    const start = dayjs(`${date.format("YYYY-MM-DD")} ${time.format("HH:mm")}`);
-    const dateKey = start.format("YYYY-MM-DD");
-
-    // Cùng ngày, các ca phải cách nhau tối thiểu 30 phút.
-    const tooCloseInSameDay = tempTimeSlots.some((s) => {
-      if (getDateKey(s.date) !== dateKey) return false;
-      const oldStart = dayjs(`${dayjs(s.date).format("YYYY-MM-DD")} ${s.time}`);
-      return Math.abs(start.diff(oldStart, "minute")) < MIN_SLOT_GAP_MINUTES;
-    });
-
-    if (tooCloseInSameDay) {
-      message.error("Các ca cùng ngày phải cách nhau tối thiểu 30 phút!");
+    if (!times || times.length === 0) {
+      message.warning("Vui lòng chọn ít nhất 1 khung giờ!");
       return;
     }
 
-    const slot: TimeSlot = {
-      date: start.startOf("day").toISOString(),
-      time: start.format("HH:mm"),
-      status: "AVAILABLE",
-      capacity: 1,
-      blockTime: FIXED_BLOCK_TIME_MINUTES,
-      roomId,
-      roomName,
-    };
+    const dateKey = date.format("YYYY-MM-DD");
+    const newSlots: TimeSlot[] = [];
+    const conflicts: string[] = [];
 
-    // Thêm vào danh sách tạm và sắp xếp lại theo thời gian
-    setTempTimeSlots((prev) => {
-      const newList = [...prev, slot];
-      return sortTimeSlots(newList);
-    });
+    // Tạo slot cho mỗi giờ đã chọn
+    for (const timeStr of times) {
+      const slotTime = dayjs(`${dateKey} ${timeStr}`);
 
-    // Clear các field để dễ thêm slot tiếp theo
+      // Check xung đột với tempTimeSlots hiện tại
+      const tooClose = tempTimeSlots.some((s) => {
+        if (getDateKey(s.date) !== dateKey) return false;
+        const oldStart = dayjs(
+          `${dayjs(s.date).format("YYYY-MM-DD")} ${s.time}`,
+        );
+        return (
+          Math.abs(slotTime.diff(oldStart, "minute")) < MIN_SLOT_GAP_MINUTES
+        );
+      });
+
+      if (tooClose) {
+        conflicts.push(timeStr);
+        continue;
+      }
+
+      newSlots.push({
+        date: slotTime.startOf("day").toISOString(),
+        time: timeStr,
+        status: "AVAILABLE",
+        capacity: 1,
+        blockTime: FIXED_BLOCK_TIME_MINUTES,
+        roomId,
+        roomName,
+      });
+    }
+
+    if (newSlots.length === 0) {
+      message.error(
+        conflicts.length > 0
+          ? `Tất cả khung giờ đã chọn đều bị xung đột: ${conflicts.join(", ")}`
+          : "Không thể thêm khung giờ nào. Vui lòng kiểm tra lại.",
+      );
+      return;
+    }
+
+    setTempTimeSlots((prev) => sortTimeSlots([...prev, ...newSlots]));
+
+    if (conflicts.length > 0) {
+      message.warning(
+        `Đã thêm ${newSlots.length} khung giờ. Bỏ qua ${conflicts.length} khung giờ bị xung đột: ${conflicts.join(", ")}`,
+      );
+    } else {
+      message.success(`Đã thêm ${newSlots.length} khung giờ`);
+    }
+
+    // Clear times để tiếp tục chọn, giữ lại date
     form.setFieldsValue({
-      date: undefined,
-      time: undefined,
+      times: undefined,
     });
-
-    message.success("Đã thêm khung giờ");
   };
 
   const removeTempSlot = (index: number) => {
@@ -490,7 +566,7 @@ const ScheduleManagement = () => {
                   roomId: r.roomId,
                   roomName: r.roomName,
                   date: undefined,
-                  time: undefined,
+                  times: undefined,
                 });
 
                 setOpen(true);
@@ -712,25 +788,11 @@ const ScheduleManagement = () => {
             title="Thêm khung giờ"
             style={{ background: "#f5f5f5", marginBottom: 16 }}
           >
-            <div
-              style={{
-                background: "#e6f7ff",
-                border: "1px solid #91d5ff",
-                padding: "8px 12px",
-                borderRadius: 4,
-                marginBottom: 12,
-                fontSize: 13,
-              }}
-            >
-              💡 Phòng đã chọn ở trên sẽ áp dụng cho tất cả khung giờ. Mỗi ca
-              khám cố định 30 phút, các ca cùng ngày phải cách nhau tối thiểu 30
-              phút.
-            </div>
             <Space style={{ display: "flex", width: "100%" }} align="start">
               <Form.Item
                 name="date"
                 label="Ngày"
-                style={{ flex: 2, marginBottom: 0 }}
+                style={{ flex: 1, marginBottom: 0 }}
               >
                 <DatePicker
                   format="DD/MM/YYYY"
@@ -741,19 +803,19 @@ const ScheduleManagement = () => {
               </Form.Item>
 
               <Form.Item
-                name="time"
-                label="Giờ bắt đầu"
-                style={{ flex: 1, marginBottom: 0 }}
+                name="times"
+                label="Khung giờ (chọn nhiều)"
+                style={{ flex: 3, marginBottom: 0 }}
               >
-                <TimePicker
-                  format="HH:mm"
-                  minuteStep={15}
+                <Select
+                  mode="multiple"
+                  placeholder="Chọn nhiều khung giờ cùng lúc"
+                  options={availableTimeOptions}
                   style={{ width: "100%" }}
+                  optionFilterProp="label"
+                  maxTagCount="responsive"
+                  showSearch
                 />
-              </Form.Item>
-
-              <Form.Item label="Phút/Ca" style={{ flex: 1, marginBottom: 0 }}>
-                <Input value="30" disabled />
               </Form.Item>
 
               <div style={{ marginTop: 30 }}>
