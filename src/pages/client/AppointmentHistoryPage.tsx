@@ -57,16 +57,15 @@ const AppointmentHistoryPage = () => {
 
   const user = useAppSelector((state) => state.auth.user);
 
-  const {
-    data,
-    isLoading,
-    isError,
-    refetch,
-  } = useGetAppointmentsQuery(user?._id ?? skipToken, {
-    refetchOnFocus: true,
-    refetchOnReconnect: true,
-    refetchOnMountOrArgChange: true,
-  });
+  const { data, isLoading, isError, refetch } = useGetAppointmentsQuery(
+    user?._id ?? skipToken,
+    {
+      refetchOnFocus: true,
+      refetchOnReconnect: true,
+      refetchOnMountOrArgChange: true,
+    },
+
+  );
 
   const getAppointments: Appointment[] = data?.data ?? [];
 
@@ -128,11 +127,24 @@ const AppointmentHistoryPage = () => {
   };
 
   const getDoctorName = (appointment: Appointment) => {
-    return appointment?.doctor?.name || appointment?.doctor?.fullName || "Bác sĩ";
+    return (
+      appointment?.doctor?.name || appointment?.doctor?.fullName || "Bác sĩ"
+    );
   };
 
   const getPatientName = (appointment: Appointment) => {
-    return appointment?.patient?.fullName || "Không rõ";
+    // API sometimes returns a plain ID in `patient`, sometimes an object in `patientProfile`
+    if (appointment.patientProfile?.fullName) return appointment.patientProfile.fullName;
+    if (typeof appointment.patient === "object" && appointment.patient?.fullName)
+      return appointment.patient.fullName;
+    return "Không rõ";
+  };
+
+  const getPatientPhone = (appointment: Appointment) => {
+    if (appointment.patientProfile?.phone) return appointment.patientProfile.phone;
+    if (typeof appointment.patient === "object" && appointment.patient?.phone)
+      return appointment.patient.phone;
+    return "Không có";
   };
 
   const getTotalAmount = (appointment: Appointment) => {
@@ -260,6 +272,7 @@ const AppointmentHistoryPage = () => {
       (apm) =>
         (apm.status === "CANCELED" || apm.status === "REQUEST-CANCELED") &&
         dayjs(apm.updatedAt).isSame(dayjs(), "month"),
+
     ).length;
 
     if (currentMonthCanceledCount >= 4) {
@@ -403,7 +416,8 @@ const AppointmentHistoryPage = () => {
                                 {getDoctorName(appointment)}
                               </h3>
                               <p className="text-sm text-blue-600">
-                                {appointment?.room?.name || "Chưa rõ phòng khám"}
+                                {appointment?.room?.name ||
+                                  "Chưa rõ phòng khám"}
                               </p>
                               <p className="text-xs text-gray-500 mt-1">
                                 Mã phiếu:{" "}
@@ -446,6 +460,7 @@ const AppointmentHistoryPage = () => {
                             </div>
 
                             <div className="flex items-center gap-2 text-sm">
+
                               <EnvironmentOutlined className="text-gray-400" />
                               <span className="truncate">
                                 {appointment.location || "Chưa có thông tin"}
@@ -455,6 +470,7 @@ const AppointmentHistoryPage = () => {
                             <div className="flex items-center gap-2 text-sm">
                               <UserOutlined className="text-gray-400" />
                               <span>{getPatientName(appointment)}</span>
+
                             </div>
 
                             <div className="flex items-center gap-2 text-sm">
@@ -478,9 +494,9 @@ const AppointmentHistoryPage = () => {
                                   <div className="text-sm text-gray-600">
                                     Tiền cọc:{" "}
                                     <span className="font-semibold">
-                                      {getDepositAmount(appointment).toLocaleString(
-                                        "vi-VN",
-                                      )}{" "}
+                                      {getDepositAmount(
+                                        appointment,
+                                      ).toLocaleString("vi-VN")}{" "}
                                       đ
                                     </span>
                                   </div>
@@ -611,7 +627,8 @@ const AppointmentHistoryPage = () => {
                 <div className="flex justify-between gap-4">
                   <span className="text-gray-600">Phương thức thanh toán:</span>
                   <span className="font-medium text-right">
-                    {selectedAppointment.payment?.paymentMethod === "PAY_AT_CLINIC"
+                    {selectedAppointment.payment?.paymentMethod ===
+                    "PAY_AT_CLINIC"
                       ? "Thanh toán sau tại phòng khám"
                       : selectedAppointment.payment?.paymentMethod || "VNPAY"}
                   </span>
@@ -631,7 +648,10 @@ const AppointmentHistoryPage = () => {
                 <div className="flex justify-between gap-4">
                   <span className="text-gray-600">Tiền cọc:</span>
                   <span className="font-medium text-right">
-                    {getDepositAmount(selectedAppointment).toLocaleString("vi-VN")} đ
+                    {getDepositAmount(selectedAppointment).toLocaleString(
+                      "vi-VN",
+                    )}{" "}
+                    đ
                   </span>
                 </div>
 
@@ -658,13 +678,14 @@ const AppointmentHistoryPage = () => {
                   <span className="text-gray-600">Họ và tên:</span>
                   <span className="font-medium text-right">
                     {getPatientName(selectedAppointment)}
+
                   </span>
                 </div>
 
                 <div className="flex justify-between gap-4">
                   <span className="text-gray-600">Số điện thoại:</span>
                   <span className="font-medium text-right">
-                    {selectedAppointment?.patient?.phone || "Không có"}
+                    {getPatientPhone(selectedAppointment)}
                   </span>
                 </div>
 
@@ -735,9 +756,12 @@ const AppointmentHistoryPage = () => {
 
             <div>
               <div className="flex justify-between items-center gap-4">
-                <span className="font-semibold text-gray-700">Tổng chi phí:</span>
+                <span className="font-semibold text-gray-700">
+                  Tổng chi phí:
+                </span>
                 <span className="text-xl font-bold text-orange-600">
-                  {getTotalAmount(selectedAppointment).toLocaleString("vi-VN")} đ
+                  {getTotalAmount(selectedAppointment).toLocaleString("vi-VN")}{" "}
+                  đ
                 </span>
               </div>
             </div>
