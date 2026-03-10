@@ -85,7 +85,10 @@ export const useAuthHandler = () => {
     password: string;
   }): Promise<boolean> => {
     try {
-      await authService.resetPassword(payload);
+      await authService.resetPassword({
+        token: payload.token,
+        newPassword: payload.password,
+      });
       message.success("Mật khẩu đã được reset thành công");
       return true;
     } catch (error) {

@@ -6,7 +6,16 @@ import {
   UserOutlined,
 } from "@ant-design/icons";
 import { skipToken, type FetchBaseQueryError } from "@reduxjs/toolkit/query";
-import { Avatar, Button, Card, DatePicker, Input, message, Select } from "antd";
+import {
+  Avatar,
+  Button,
+  Card,
+  DatePicker,
+  Input,
+  message,
+  Pagination,
+  Select,
+} from "antd";
 import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
@@ -58,12 +67,16 @@ const BookingAppointmentPage = () => {
 
   const [fromDate, setFromDate] = useState<string>("");
   const [toDate, setToDate] = useState<string>("");
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const pageSize = 5;
 
   // Doctors
   const { data, isLoading, isFetching, isError } = useGetDoctorsQuery({
     inputSearch: delaySearch,
     scheduleDateFrom: fromDate || undefined,
     scheduleDateTo: toDate || undefined,
+    page: currentPage,
+    limit: pageSize,
   });
   const doctors: Doctor[] = useMemo(() => data?.data ?? [], [data]);
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
@@ -78,7 +91,12 @@ const BookingAppointmentPage = () => {
     },
   );
   const scheduleDoctorId: DoctorSchedule[] = schedule?.data ?? [];
-  const scheduleItem = scheduleDoctorId[0];
+  const scheduleItem = useMemo(
+    () =>
+      scheduleDoctorId.find((item) => item.doctorId === selectedDoctor?._id) ??
+      null,
+    [scheduleDoctorId, selectedDoctor?._id],
+  );
 
   const [selectedPerson, setSelectedPerson] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<number | null>(null);
@@ -140,6 +158,7 @@ const BookingAppointmentPage = () => {
 
   const totalAmount = Number(selectedDoctor?.price) || 0;
   const depositAmount = Math.ceil(totalAmount * 0.4);
+  const formatPrice = (value: number) => value.toLocaleString("vi-VN");
   const isSubmitting = isCreatingBooking || isCreatingPaymentLink;
   const [showAddPatientModal, setShowAddPatientModal] = useState(false);
   const [editingPatient, setEditingPatient] = useState<PatientResponse | null>(
@@ -152,6 +171,8 @@ const BookingAppointmentPage = () => {
   // Select doctor
   const handleDoctorSelect = (doctor: Doctor) => {
     setSelectedDoctor(doctor);
+    setSelectedDate(null);
+    setSelectedSlot(null);
     setSelectedSchedule(null);
   };
 
@@ -174,6 +195,8 @@ const BookingAppointmentPage = () => {
 
   const handleBackToList = () => {
     setSelectedDoctor(null);
+    setSelectedDate(null);
+    setSelectedSlot(null);
     setSelectedSchedule(null);
   };
 
@@ -252,11 +275,24 @@ const BookingAppointmentPage = () => {
     return () => clearTimeout(timeout);
   }, [inputSearch]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [delaySearch, fromDate, toDate]);
+
+  useEffect(() => {
+    if (!scheduleItem || scheduleItem.timeSlots.length === 0) {
+      setSelectedDate(null);
+      setSelectedSlot(null);
+      setSelectedSchedule(null);
+    }
+  }, [scheduleItem]);
+
   // Reset filters
   const handleReset = () => {
     setInputSearch("");
     setFromDate("");
     setToDate("");
+    setCurrentPage(1);
     setSelectedDoctor(null);
     setSelectedSchedule(null);
   };
@@ -266,12 +302,14 @@ const BookingAppointmentPage = () => {
     if (dates && dates[0] && dates[1]) {
       setFromDate(dates[0].format("YYYY-MM-DD"));
       setToDate(dates[1].format("YYYY-MM-DD"));
+      setCurrentPage(1);
 
       setSelectedDoctor(null);
       setSelectedSchedule(null);
     } else {
       setFromDate("");
       setToDate("");
+      setCurrentPage(1);
     }
   };
 
@@ -296,6 +334,7 @@ const BookingAppointmentPage = () => {
       .map((slot) => {
         const slotDate = dayjs(slot.date).format("YYYY-MM-DD");
 
+        // Kiểm tra slot này bị chiếm bởi bác sĩ này
         const doctorBlocked = getBookingBySchedIdData.some((apm) => {
           return (
             dayjs(apm.dateTime).format("YYYY-MM-DD") === slotDate &&
@@ -304,12 +343,9 @@ const BookingAppointmentPage = () => {
           );
         });
 
-        const patientBlocked = getBookingUserData.some((apm) => {
-          const apmPatientId =
-            typeof apm.patient === "string" ? apm.patient : apm.patient?._id;
-
+        // Kiểm tra user đã có lịch nào (bất kỳ bác sĩ nào) cùng khung giờ này
+        const userHasConflict = getBookingUserData.some((apm) => {
           return (
-            apmPatientId === selectedPerson &&
             dayjs(apm.dateTime).format("YYYY-MM-DD") === slotDate &&
             apm.time === slot.time &&
             BLOCK_STATUSES.includes(apm.status)
@@ -317,26 +353,21 @@ const BookingAppointmentPage = () => {
         });
 
         const disabled =
-          slot.status !== "AVAILABLE" || doctorBlocked || patientBlocked;
+          slot.status !== "AVAILABLE" || doctorBlocked || userHasConflict;
 
         return {
           ...slot,
           disabled,
           disabledReason: doctorBlocked
             ? "Khung giờ đã được đặt"
-            : patientBlocked
-              ? "Bạn đã có lịch cùng khung giờ"
+            : userHasConflict
+              ? "Bạn đã có lịch khám cùng khung giờ này"
               : slot.status !== "AVAILABLE"
                 ? "Khung giờ không khả dụng"
                 : undefined,
         };
       });
-  }, [
-    scheduleItem?.timeSlots,
-    getBookingUserData,
-    getBookingBySchedIdData,
-    selectedPerson,
-  ]);
+  }, [scheduleItem?.timeSlots, getBookingUserData, getBookingBySchedIdData]);
 
   // Confirm booking
   const handleConfirmBooking = async () => {
@@ -573,7 +604,7 @@ const BookingAppointmentPage = () => {
                   <Button size="large" icon={<UserOutlined />}>
                     Tìm thấy
                     <span className="font-semibold">
-                      {doctors.length} bác sĩ
+                      {data?.meta?.total ?? doctors.length} bác sĩ
                     </span>{" "}
                     phù hợp
                   </Button>
@@ -586,11 +617,27 @@ const BookingAppointmentPage = () => {
 
               {/* Doctor List */}
               {!selectedDoctor && (
-                <DoctorList
-                  doctors={doctors}
-                  isFetching={isFetching}
-                  handleDoctorSelect={handleDoctorSelect}
-                />
+                <>
+                  <DoctorList
+                    doctors={doctors}
+                    isFetching={isFetching}
+                    handleDoctorSelect={handleDoctorSelect}
+                  />
+
+                  <div className="mt-4 flex justify-end">
+                    <Pagination
+                      current={currentPage}
+                      pageSize={data?.meta?.limit ?? pageSize}
+                      total={data?.meta?.total ?? doctors.length}
+                      onChange={(page) => {
+                        setCurrentPage(page);
+                        setSelectedDoctor(null);
+                        setSelectedSchedule(null);
+                      }}
+                      showSizeChanger={false}
+                    />
+                  </div>
+                </>
               )}
 
               {/* Schedule View */}
@@ -614,7 +661,7 @@ const BookingAppointmentPage = () => {
                         <div className="text-right">
                           <p className="text-xs text-gray-500">Giá khám:</p>
                           <p className="text-lg font-bold text-orange-500">
-                            {selectedDoctor.price} đ
+                            {formatPrice(Number(selectedDoctor.price) || 0)} đ
                           </p>
                         </div>
                         <Button
@@ -650,7 +697,7 @@ const BookingAppointmentPage = () => {
                         <span>
                           Giá khám:{" "}
                           <span className="text-orange-500 font-semibold">
-                            {selectedDoctor.price} đ
+                            {formatPrice(Number(selectedDoctor.price) || 0)} đ
                           </span>
                         </span>
                       </div>
@@ -659,10 +706,14 @@ const BookingAppointmentPage = () => {
 
                   {/* Time Slot Picker */}
                   <TimeSlotPicker
-                    scheduleItem={{
-                      ...scheduleItem,
-                      timeSlots: slotsWithState,
-                    }}
+                    scheduleItem={
+                      scheduleItem
+                        ? {
+                            ...scheduleItem,
+                            timeSlots: slotsWithState,
+                          }
+                        : undefined
+                    }
                     selectedDate={selectedDate}
                     setSelectedDate={setSelectedDate}
                     selectedSchedule={selectedSlot}
