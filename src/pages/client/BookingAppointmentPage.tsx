@@ -603,7 +603,11 @@ const isSubmitting = isCreatingBooking || isCreatingPaymentLink;
                   <Card className="mb-4 bg-blue-50">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <Avatar size={48} icon={<UserOutlined />} />
+                     <Avatar
+                      size={56}
+                      src={(selectedDoctor as any).avatar}
+                      className="shadow"
+                    />
                         <div>
                           <h3 className="font-semibold text-gray-800">
                             {selectedDoctor.name}

@@ -2,6 +2,7 @@ import {
   CalendarOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
+  SearchOutlined,
   TeamOutlined,
   UserOutlined,
 } from "@ant-design/icons";
@@ -11,6 +12,7 @@ import {
   Calendar,
   Card,
   Col,
+  Input,
   List,
   message,
   Progress,
@@ -20,10 +22,36 @@ import {
   Tag,
 } from "antd";
 import dayjs, { Dayjs } from "dayjs";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../../api";
 
 type AppointmentStatus = string;
+
+interface DoctorApi {
+  _id: string;
+  name?: string;
+  fullName?: string;
+  avatar?: string;
+  specialty?: string;
+  experience_year?: number;
+  price?: number;
+  is_active?: boolean;
+}
+
+interface ScheduleApi {
+  _id: string;
+  doctorId?: string;
+  doctor?: string;
+  roomName?: string;
+  roomId?: number;
+  timeSlots?: Array<{
+    time: string;
+    date: string;
+    status: string;
+    scheduleSlotId?: number;
+  }>;
+}
 
 interface Doctor {
   name?: string;
@@ -59,7 +87,21 @@ interface UpcomingAppointment {
   doctor: string;
 }
 
+type DoctorWithSchedule = {
+  _id: string;
+  name: string;
+  avatar?: string;
+  specialty?: string;
+  experience_year?: number;
+  price?: number;
+  nextSlotText?: string;
+  upcomingCount?: number;
+  is_active?: boolean;
+};
+
 const DashBoardPage: React.FC = () => {
+  const nav = useNavigate();
+
   const [appointments, setAppointments] = useState<TableAppointment[]>([]);
   const [upcoming, setUpcoming] = useState<UpcomingAppointment[]>([]);
   const [stats, setStats] = useState({
@@ -68,6 +110,12 @@ const DashBoardPage: React.FC = () => {
     doctors: 0,
     completedThisMonth: 0,
   });
+
+  const [doctorsWithSchedule, setDoctorsWithSchedule] = useState<
+    DoctorWithSchedule[]
+  >([]);
+  const [loadingDoctorsSchedule, setLoadingDoctorsSchedule] = useState(false);
+  const [searchDoctor, setSearchDoctor] = useState("");
 
   const fetchDashboard = async () => {
     try {
@@ -78,7 +126,7 @@ const DashBoardPage: React.FC = () => {
       ]);
 
       const appointmentsData: AppointmentApi[] = appointmentRes.data.data || [];
-      const doctorsData = doctorRes.data.data || [];
+      const doctorsData: DoctorApi[] = doctorRes.data.data || [];
       const patientsData = patientRes.data.data || [];
 
       const today = dayjs().format("YYYY-MM-DD");
@@ -108,29 +156,116 @@ const DashBoardPage: React.FC = () => {
         }))
       );
 
-     setUpcoming(
-  appointmentsData
-    .filter((a) => dayjs(a.dateTime).isAfter(dayjs()))
-    .sort((a, b) =>
-      dayjs(a.dateTime).valueOf() - dayjs(b.dateTime).valueOf()
-    )
-    .slice(0, 5)
-    .map((a) => ({
-      name: a.patient?.fullName || "—",
-      time: a.time,
-      date: dayjs(a.dateTime).format("DD/MM/YYYY"),
-      doctor: a.doctor?.name || "—",
-    }))
-);
+      setUpcoming(
+        appointmentsData
+          .filter((a) => dayjs(a.dateTime).isAfter(dayjs()))
+          .sort((a, b) => dayjs(a.dateTime).valueOf() - dayjs(b.dateTime).valueOf())
+          .slice(0, 5)
+          .map((a) => ({
+            name: a.patient?.fullName || "—",
+            time: a.time,
+            date: dayjs(a.dateTime).format("DD/MM/YYYY"),
+            doctor: a.doctor?.name || "—",
+          }))
+      );
 
-    } catch {
+      // fetch “doctors with schedule”
+      await fetchDoctorsWithSchedule(doctorsData);
+    } catch (err) {
+      console.log(err);
       message.error("Không tải được dữ liệu dashboard");
+    }
+  };
+
+  const fetchSchedulesByDoctor = async (doctorId: string) => {
+    // Dự án của bạn trước đây có query schedules?doctorId=...
+    const res = await api.get("/schedules", { params: { doctorId } });
+    return (res.data?.data ?? []) as ScheduleApi[];
+  };
+
+  const fetchDoctorsWithSchedule = async (doctorsData: DoctorApi[]) => {
+    try {
+      setLoadingDoctorsSchedule(true);
+
+      // chỉ lấy doctor active để hiển thị nổi bật
+      const activeDoctors = (doctorsData || []).filter((d) => d.is_active !== false);
+
+      // limit để không call quá nhiều request
+      const LIMIT = 10;
+      const pick = activeDoctors.slice(0, LIMIT);
+
+      const results = await Promise.all(
+        pick.map(async (doc) => {
+          try {
+            const schedules = await fetchSchedulesByDoctor(doc._id);
+
+            // gom các slot tương lai
+            const futureSlots: Array<{ time: string; date: string }> = [];
+
+            schedules.forEach((s) => {
+              (s.timeSlots || []).forEach((ts) => {
+                const dt = dayjs(ts.date);
+                if (dt.isAfter(dayjs().startOf("day"))) {
+                  futureSlots.push({ time: ts.time, date: ts.date });
+                }
+              });
+            });
+
+            futureSlots.sort(
+              (a, b) => dayjs(a.date).valueOf() - dayjs(b.date).valueOf()
+            );
+
+            const next = futureSlots[0];
+
+            return {
+              _id: doc._id,
+              name: doc.name || doc.fullName || "Bác sĩ",
+              avatar: doc.avatar,
+              specialty: doc.specialty,
+              experience_year: doc.experience_year,
+              price: doc.price,
+              is_active: doc.is_active,
+              upcomingCount: futureSlots.length,
+              nextSlotText: next
+                ? `${next.time} • ${dayjs(next.date).format("DD/MM")}`
+                : undefined,
+            } as DoctorWithSchedule;
+          } catch {
+            return {
+              _id: doc._id,
+              name: doc.name || doc.fullName || "Bác sĩ",
+              avatar: doc.avatar,
+              specialty: doc.specialty,
+              experience_year: doc.experience_year,
+              price: doc.price,
+              is_active: doc.is_active,
+              upcomingCount: 0,
+              nextSlotText: undefined,
+            } as DoctorWithSchedule;
+          }
+        })
+      );
+
+      // chỉ hiển thị bác sĩ có slot sắp tới
+      const filtered = results
+        .filter((d) => (d.upcomingCount || 0) > 0)
+        .sort((a, b) => (b.upcomingCount || 0) - (a.upcomingCount || 0));
+
+      setDoctorsWithSchedule(filtered);
+    } finally {
+      setLoadingDoctorsSchedule(false);
     }
   };
 
   useEffect(() => {
     fetchDashboard();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const goToBooking = (doctorId: string) => {
+    // Nếu route đặt lịch của bạn khác, đổi ở đây
+    nav(`/dat-lich-kham?doctorId=${doctorId}`);
+  };
 
   const columns = [
     {
@@ -171,12 +306,19 @@ const DashBoardPage: React.FC = () => {
 
   const dateCellRender = (value: Dayjs) => {
     const count = appointments.filter(
-      (a) =>
-        dayjs(a.time.split(" - ")[1], "DD/MM/YYYY").date() === value.date()
+      (a) => dayjs(a.time.split(" - ")[1], "DD/MM/YYYY").date() === value.date()
     ).length;
 
     return count ? <Badge status="success" text={`${count} lịch hẹn`} /> : null;
   };
+
+  const filteredDoctors = useMemo(() => {
+    const q = searchDoctor.trim().toLowerCase();
+    if (!q) return doctorsWithSchedule;
+    return doctorsWithSchedule.filter((d) =>
+      (d.name || "").toLowerCase().includes(q)
+    );
+  }, [doctorsWithSchedule, searchDoctor]);
 
   return (
     <>
@@ -203,11 +345,7 @@ const DashBoardPage: React.FC = () => {
 
         <Col xs={24} md={12} lg={6}>
           <Card>
-            <Statistic
-              title="Bác sĩ"
-              value={stats.doctors}
-              prefix={<TeamOutlined />}
-            />
+            <Statistic title="Bác sĩ" value={stats.doctors} prefix={<TeamOutlined />} />
           </Card>
         </Col>
 
@@ -223,14 +361,81 @@ const DashBoardPage: React.FC = () => {
         </Col>
       </Row>
 
+      {/* Doctors with schedule - nổi bật */}
+      <Card
+        style={{ marginBottom: 16 }}
+        title="Bác sĩ có lịch khám"
+        extra={
+          <Input
+            allowClear
+            placeholder="Tìm bác sĩ..."
+            prefix={<SearchOutlined />}
+            value={searchDoctor}
+            onChange={(e) => setSearchDoctor(e.target.value)}
+            style={{ width: 260 }}
+          />
+        }
+        loading={loadingDoctorsSchedule}
+      >
+        {filteredDoctors.length === 0 ? (
+          <div style={{ color: "#888" }}>
+            Chưa có bác sĩ nào có lịch khám sắp tới.
+          </div>
+        ) : (
+          <Row gutter={[12, 12]}>
+            {filteredDoctors.slice(0, 8).map((d) => (
+              <Col xs={24} sm={12} md={8} lg={6} key={d._id}>
+                <Card
+                  hoverable
+                  onClick={() => goToBooking(d._id)}
+                  style={{
+                    borderRadius: 12,
+                    border: "1px solid #f0f0f0",
+                    height: "100%",
+                  }}
+                >
+                  <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                    <Avatar size={56} src={d.avatar} icon={<UserOutlined />} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontWeight: 700,
+                          fontSize: 14,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {d.name}
+                      </div>
+                      <div style={{ color: "#666", fontSize: 12 }}>
+                        {d.specialty || "Chưa rõ chuyên khoa"}
+                      </div>
+                      <div style={{ marginTop: 6, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <Tag color="blue" style={{ marginInlineEnd: 0 }}>
+                          {d.nextSlotText ? `Gần nhất: ${d.nextSlotText}` : "Chưa có"}
+                        </Tag>
+                        <Tag color="green" style={{ marginInlineEnd: 0 }}>
+                          {d.upcomingCount || 0} lịch
+                        </Tag>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: 10, color: "#999", fontSize: 12 }}>
+                    Nhấn để xem lịch và đặt khám
+                  </div>
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        )}
+      </Card>
+
       <Row gutter={16}>
         <Col xs={24} lg={16}>
           <Card title="Lịch hẹn gần đây" style={{ marginBottom: 16 }}>
-            <Table
-              columns={columns}
-              dataSource={appointments}
-              pagination={false}
-            />
+            <Table columns={columns} dataSource={appointments} pagination={false} />
           </Card>
 
           <Card title="Tỷ lệ hoàn thành (demo)">
@@ -245,7 +450,6 @@ const DashBoardPage: React.FC = () => {
             <List
               dataSource={upcoming}
               renderItem={(item) => (
-                
                 <List.Item>
                   <List.Item.Meta
                     avatar={<Avatar icon={<UserOutlined />} />}
