@@ -10,11 +10,27 @@ type GetDoctorsParams = {
   limit?: number;
 };
 
+
 export const doctorApi = createApi({
   reducerPath: "doctorApi",
   baseQuery: createBaseQuery(),
   tagTypes: ["Doctors"],
   endpoints: (builder) => ({
+
+
+    updateDoctorAvatar: builder.mutation<
+  { message: string; data: any },
+  { id: string; avatar: string }
+>({
+  query: ({ id, avatar }) => ({
+    url: `/doctors/${id}/avatar`,
+    method: "PATCH",
+    body: { avatar },
+  }),
+  invalidatesTags: ["Doctors"],
+}),
+
+
     getDoctors: builder.query<DoctorResponse, GetDoctorsParams | void>({
       query: (params) => {
         const searchParams = new URLSearchParams();
@@ -44,6 +60,17 @@ export const doctorApi = createApi({
       },
       providesTags: ["Doctors"],
     }),
+    updateDoctorAvatar: builder.mutation<
+  { message: string; data: any },
+  { id: string; avatar: string }
+>({
+  query: ({ id, avatar }) => ({
+    url: `/doctors/${id}/avatar`,
+    method: "PATCH",
+    body: { avatar },
+  }),
+  invalidatesTags: ["Doctors"],
+}),
 
     getDoctorsByAdmin: builder.query<
       DoctorResponse,
@@ -82,4 +109,4 @@ export const doctorApi = createApi({
   }),
 });
 
-export const { useGetDoctorsQuery, useGetDoctorsByAdminQuery } = doctorApi;
+export const { useGetDoctorsQuery, useGetDoctorsByAdminQuery, useUpdateDoctorAvatarMutation } = doctorApi;

@@ -7,14 +7,30 @@ import {
   SafetyOutlined,
   TeamOutlined,
 } from "@ant-design/icons";
-import { Button, Card } from "antd";
-import { useState } from "react";
+import { Avatar, Button, Card, Tag, message } from "antd";
+import dayjs from "dayjs";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import api from "../../api";
 import { useAppSelector } from "../../app/hook";
 import { useGetDoctorsQuery } from "../../app/services/doctorApi";
 import banner from "../../assets/imgs/banner.png";
 import AuthModal from "../../components/auth/AuthModal";
 import type { Doctor } from "../../types/Doctor";
+
+type ScheduleApi = {
+  _id: string;
+  timeSlots?: Array<{
+    time: string;
+    date: string;
+    status: string; // AVAILABLE / BOOKED...
+  }>;
+};
+
+type DoctorWithSchedule = Doctor & {
+  upcomingCount: number;
+  nextSlotText?: string;
+};
 
 const HomePage = () => {
   const navigate = useNavigate();
@@ -28,8 +44,14 @@ const HomePage = () => {
     localStorage.getItem("accessToken");
 
   const { data } = useGetDoctorsQuery();
-
   const doctors: Doctor[] = data?.data ?? [];
+
+  // ====== Doctors with schedule state ======
+  const [doctorsWithSchedule, setDoctorsWithSchedule] = useState<
+    DoctorWithSchedule[]
+  >([]);
+  const [loadingDoctorsSchedule, setLoadingDoctorsSchedule] = useState(false);
+  const [searchDoctor, setSearchDoctor] = useState("");
 
   const features = [
     {
@@ -75,21 +97,115 @@ const HomePage = () => {
   const experiencedDoctors = doctors
     .map((doc) => ({
       ...doc,
-      experience_year: Number(doc.experience_year),
+      experience_year: Number((doc as any).experience_year),
     }))
-    .filter((doc) => doc.experience_year >= 10);
+    .filter((doc) => (doc as any).experience_year >= 10);
 
   // ===== HÀM XỬ LÝ ĐIỀU HƯỚNG CÓ KIỂM TRA ĐĂNG NHẬP =====
   const handleNavigateWithAuth = (path: string) => {
     if (!isAuthenticated) {
-      // Nếu chưa đăng nhập: hiện modal đăng nhập và ở trang chủ
       setAuthModalMode("login");
       setAuthModalOpen(true);
     } else {
-      // Nếu đã đăng nhập: chuyển hướng bình thường
       navigate(path);
     }
   };
+
+  // ===== fetch schedules by doctor =====
+  const fetchSchedulesByDoctor = async (doctorId: string) => {
+    const res = await api.get("/schedules", { params: { doctorId } });
+    return (res.data?.data ?? []) as ScheduleApi[];
+  };
+
+  // ===== build doctors with upcoming AVAILABLE slots =====
+  const fetchDoctorsWithSchedule = async () => {
+    try {
+      setLoadingDoctorsSchedule(true);
+
+      const activeDoctors = (doctors || []).filter(
+        (d: any) => d?.is_active !== false,
+      );
+
+      // limit để không gọi quá nhiều requests
+      const LIMIT = 12;
+      const pick = activeDoctors.slice(0, LIMIT);
+
+      const results = await Promise.all(
+        pick.map(async (doc: any) => {
+          try {
+            const schedules = await fetchSchedulesByDoctor(doc._id);
+
+            const futureAvailableSlots: Array<{ time: string; date: string }> =
+              [];
+
+            schedules.forEach((s) => {
+              (s.timeSlots || []).forEach((ts) => {
+                const slotDay = dayjs(ts.date);
+                const isFutureOrToday =
+                  slotDay.isSame(dayjs(), "day") ||
+                  slotDay.isAfter(dayjs(), "day");
+
+                const isAvailable =
+                  String(ts.status || "").toUpperCase() === "AVAILABLE";
+
+                if (isFutureOrToday && isAvailable) {
+                  futureAvailableSlots.push({ time: ts.time, date: ts.date });
+                }
+              });
+            });
+
+            futureAvailableSlots.sort(
+              (a, b) => dayjs(a.date).valueOf() - dayjs(b.date).valueOf(),
+            );
+
+            const next = futureAvailableSlots[0];
+
+            return {
+              ...(doc as Doctor),
+              upcomingCount: futureAvailableSlots.length,
+              nextSlotText: next
+                ? `${next.time} • ${dayjs(next.date).format("DD/MM")}`
+                : undefined,
+            } as DoctorWithSchedule;
+          } catch {
+            return {
+              ...(doc as Doctor),
+              upcomingCount: 0,
+              nextSlotText: undefined,
+            } as DoctorWithSchedule;
+          }
+        }),
+      );
+
+      const filtered = results
+        .filter((d) => d.upcomingCount > 0)
+        .sort((a, b) => b.upcomingCount - a.upcomingCount);
+
+      setDoctorsWithSchedule(filtered);
+    } catch (err) {
+      console.log(err);
+      message.error("Không thể tải danh sách bác sĩ có lịch khám");
+    } finally {
+      setLoadingDoctorsSchedule(false);
+    }
+  };
+
+  useEffect(() => {
+    if (doctors.length > 0) {
+      fetchDoctorsWithSchedule();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [doctors.length]);
+
+  const filteredDoctorsWithSchedule = useMemo(() => {
+    const q = searchDoctor.trim().toLowerCase();
+    if (!q) return doctorsWithSchedule;
+    return doctorsWithSchedule.filter((d) =>
+      String(d.name || "")
+        .toLowerCase()
+        .includes(q),
+    );
+  }, [doctorsWithSchedule, searchDoctor]);
 
   return (
     <div className="min-h-screen bg-white">
@@ -215,6 +331,83 @@ const HomePage = () => {
         </div>
       </div>
 
+      {/* ===== NEW SECTION: Doctors with schedule ===== */}
+      <div className="container mx-auto px-4 py-24">
+        <div className="text-center mb-10 space-y-3">
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900">
+            Đội ngũ bác sĩ nổi bật
+          </h2>
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            Chọn bác sĩ có lịch trống để đặt khám nhanh chóng
+          </p>
+        </div>
+
+        {/* <div className="max-w-5xl mx-auto mb-6">
+          <Input
+            allowClear
+            placeholder="Tìm bác sĩ..."
+            prefix={<SearchOutlined className="text-gray-400" />}
+            value={searchDoctor}
+            onChange={(e) => setSearchDoctor(e.target.value)}
+            className="h-12"
+          />
+        </div> */}
+
+        {loadingDoctorsSchedule ? (
+          <div className="text-center text-gray-500">Đang tải...</div>
+        ) : filteredDoctorsWithSchedule.length === 0 ? (
+          <div className="text-center text-gray-500">
+            Hiện chưa có bác sĩ nào có lịch trống sắp tới.
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            {filteredDoctorsWithSchedule.slice(0, 6).map((doctor) => (
+              <div
+                key={(doctor as any)._id}
+                onClick={() =>
+                  handleNavigateWithAuth(
+                    `/dat-lich-kham?doctorId=${(doctor as any)._id}`,
+                  )
+                }
+                className="group cursor-pointer bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:-translate-y-1 overflow-hidden"
+              >
+                <div className="p-6">
+                  <div className="flex items-center gap-4">
+                    <Avatar
+                      size={56}
+                      src={(doctor as any).avatar}
+                      className="shadow"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-gray-900 truncate">
+                        {doctor.name}
+                      </div>
+                      <div className="text-sm text-blue-600 truncate">
+                        {(doctor as any).specialty || "Chưa rõ chuyên khoa"}
+                      </div>
+                      <div className="mt-2 flex gap-2 flex-wrap">
+                        <Tag color="blue" className="m-0">
+                          Gần nhất: {(doctor as any).nextSlotText}
+                        </Tag>
+                        <Tag color="green" className="m-0">
+                          {(doctor as any).upcomingCount} slot trống
+                        </Tag>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 text-sm text-gray-500">
+                    Nhấn để xem lịch và đặt khám
+                  </div>
+                </div>
+
+                <div className="h-1 bg-gradient-to-r from-blue-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Features Grid */}
       <div className="container mx-auto px-4 py-24">
         <div className="text-center mb-16 space-y-4">
@@ -315,25 +508,14 @@ const HomePage = () => {
         </div>
       </div>
 
-      {/* Doctors Section */}
+      {/* Doctors Section (existing) */}
       <div className="container mx-auto px-4 py-24">
-        <div className="text-center mb-16 space-y-4">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900">
-            Đội ngũ bác sĩ nổi bật
-          </h2>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Đội ngũ chuyên gia hàng đầu với nhiều năm kinh nghiệm trong lĩnh vực
-            nhãn khoa
-          </p>
-        </div>
-
         <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-          {experiencedDoctors.slice(0, 3).map((doctor) => (
+          {experiencedDoctors.slice(0, 3).map((doctor: any) => (
             <div
               key={doctor._id}
               className="group relative bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden"
             >
-              {/* Image */}
               <div className="relative overflow-hidden">
                 <img
                   src={doctor.avatar}
@@ -342,7 +524,6 @@ const HomePage = () => {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
 
-                {/* Experience Badge */}
                 <div className="absolute top-4 right-4">
                   <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-medium shadow-lg">
                     {doctor.experience_year} năm kinh nghiệm
@@ -350,7 +531,6 @@ const HomePage = () => {
                 </div>
               </div>
 
-              {/* Content */}
               <div className="p-6 space-y-4">
                 <div>
                   <h3 className="text-xl font-bold text-gray-900 mb-1">
@@ -362,7 +542,6 @@ const HomePage = () => {
                 </div>
               </div>
 
-              {/* Hover Effect Border */}
               <div className="absolute inset-0 border-2 border-blue-500 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
             </div>
           ))}
@@ -425,58 +604,25 @@ const HomePage = () => {
 
       <style>{`
         @keyframes fade-in {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
         }
 
         @keyframes blob {
-          0% {
-            transform: translate(0px, 0px) scale(1);
-          }
-          33% {
-            transform: translate(30px, -50px) scale(1.1);
-          }
-          66% {
-            transform: translate(-20px, 20px) scale(0.9);
-          }
-          100% {
-            transform: translate(0px, 0px) scale(1);
-          }
+          0% { transform: translate(0px, 0px) scale(1); }
+          33% { transform: translate(30px, -50px) scale(1.1); }
+          66% { transform: translate(-20px, 20px) scale(0.9); }
+          100% { transform: translate(0px, 0px) scale(1); }
         }
 
-        .animate-fade-in {
-          animation: fade-in 0.8s ease-out;
-        }
-
-        .animate-fade-in-delay {
-          animation: fade-in 0.8s ease-out 0.2s both;
-        }
-
-        .animate-blob {
-          animation: blob 7s infinite;
-        }
-
-        .animation-delay-2000 {
-          animation-delay: 2s;
-        }
+        .animate-fade-in { animation: fade-in 0.8s ease-out; }
+        .animate-fade-in-delay { animation: fade-in 0.8s ease-out 0.2s both; }
+        .animate-blob { animation: blob 7s infinite; }
+        .animation-delay-2000 { animation-delay: 2s; }
 
         .bg-grid-pattern {
-          background-image: linear-gradient(
-              to right,
-              rgba(59, 130, 246, 0.1) 1px,
-              transparent 1px
-            ),
-            linear-gradient(
-              to bottom,
-              rgba(59, 130, 246, 0.1) 1px,
-              transparent 1px
-            );
+          background-image: linear-gradient(to right, rgba(59,130,246,0.1) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(59,130,246,0.1) 1px, transparent 1px);
           background-size: 40px 40px;
         }
 

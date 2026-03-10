@@ -33,7 +33,11 @@ const DoctorList = ({
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 flex-1">
-                  <Avatar size={48} icon={<UserOutlined />} />
+                  <Avatar
+                    size={48}
+                    src={doctor.avatar}
+                    icon={!doctor.avatar && <UserOutlined />}
+                  />
                   <div>
                     <h3 className="font-semibold text-gray-800">
                       {doctor.name}

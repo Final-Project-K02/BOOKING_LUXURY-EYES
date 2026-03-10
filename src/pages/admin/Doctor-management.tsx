@@ -1,8 +1,10 @@
 import { PlusOutlined } from "@ant-design/icons";
 import {
+  Avatar,
   Button,
   Card,
   Form,
+  Image,
   Input,
   InputNumber,
   message,
@@ -10,8 +12,10 @@ import {
   Popconfirm,
   Space,
   Table,
+  Upload,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
+import type { UploadProps } from "antd";
 import { useEffect, useState } from "react";
 import api from "../../api";
 
@@ -42,6 +46,8 @@ interface DoctorFormValues {
   email?: string;
   phone?: string;
   description?: string;
+  email?: string;
+  phone?: string;
 }
 
 const DoctorManagement: React.FC = () => {
@@ -49,6 +55,7 @@ const DoctorManagement: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [openModal, setOpenModal] = useState(false);
   const [editingDoctor, setEditingDoctor] = useState<Doctor | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   const [form] = Form.useForm<DoctorFormValues>();
   const [filters, setFilters] = useState<DoctorFilter>({});
@@ -78,6 +85,7 @@ const DoctorManagement: React.FC = () => {
 
   useEffect(() => {
     fetchDoctors();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
   const handleToggleStatus = async (doctor: Doctor) => {
@@ -121,17 +129,89 @@ const DoctorManagement: React.FC = () => {
     }
   };
 
+  // Upload avatar to backend -> Cloudinary
+  const uploadDoctorAvatar = async (file: File) => {
+    const formData = new FormData();
+    formData.append("image", file);
+    formData.append("folder", "booking-app/doctors");
+
+    // Nếu baseURL của api đã là .../api thì để "/uploads/image"
+    // Nếu baseURL không có /api thì đổi thành "/api/uploads/image"
+    const res = await api.post("/uploads/image", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+
+    return res.data?.data?.url as string;
+  };
+
+  const uploadProps: UploadProps = {
+    accept: "image/*",
+    showUploadList: false,
+    beforeUpload: async (file) => {
+      try {
+        setUploadingAvatar(true);
+
+        // Optional: check file size client-side
+        const maxSize = 5 * 1024 * 1024;
+        if ((file as File).size > maxSize) {
+          message.error("Ảnh quá lớn (tối đa 5MB)");
+          return Upload.LIST_IGNORE;
+        }
+
+        const url = await uploadDoctorAvatar(file as File);
+
+        if (!url) {
+          message.error("Upload thất bại: không nhận được url");
+          return Upload.LIST_IGNORE;
+        }
+
+        form.setFieldValue("avatar", url);
+        message.success("Upload avatar thành công");
+      } catch (err: any) {
+        message.error(err?.response?.data?.message || "Upload thất bại");
+      } finally {
+        setUploadingAvatar(false);
+      }
+
+      // chặn Upload tự upload
+      return false;
+    },
+  };
+
   const columns: ColumnsType<Doctor> = [
     { title: "Tên bác sĩ", dataIndex: "name" },
     {
+      title: "Ảnh",
+      dataIndex: "avatar",
+      width: 90,
+      render: (avatarUrl: string | undefined, record: Doctor) => {
+        if (avatarUrl) {
+          return (
+            <Image
+              src={avatarUrl}
+              width={48}
+              height={48}
+              style={{ objectFit: "cover", borderRadius: 8 }}
+              preview={{ src: avatarUrl }}
+              fallback="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48'%3E%3Crect width='100%25' height='100%25' fill='%23eee'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23999' font-size='10'%3ENo%3C/text%3E%3C/svg%3E"
+            />
+          );
+        }
+
+        return (
+          <Avatar size={48}>{record?.name?.[0]?.toUpperCase() || "?"}</Avatar>
+        );
+      },
+    },
+    {
       title: "Giá khám",
       dataIndex: "price",
-      render: (price) => `${price.toLocaleString()} đ`,
+      render: (price: number) => `${price.toLocaleString()} đ`,
     },
     {
       title: "Kinh nghiệm",
       dataIndex: "experience_year",
-      render: (year) => `${year} năm`,
+      render: (year: number) => `${year} năm`,
     },
     {
       title: "Mô tả",
@@ -142,12 +222,12 @@ const DoctorManagement: React.FC = () => {
     {
       title: "Email",
       dataIndex: "email",
-      render: (text) => text || "—",
+      render: (text: string) => text || "—",
     },
     {
       title: "Số điện thoại",
       dataIndex: "phone",
-      render: (text) => text || "—",
+      render: (text: string) => text || "—",
     },
     {
       title: "Trạng thái",
@@ -300,6 +380,7 @@ const DoctorManagement: React.FC = () => {
         onCancel={() => setOpenModal(false)}
         onOk={() => form.submit()}
         okText="Lưu"
+        okButtonProps={{ disabled: uploadingAvatar }}
       >
         <Form
           layout="vertical"
@@ -331,8 +412,56 @@ const DoctorManagement: React.FC = () => {
             <Input />
           </Form.Item>
 
+          {/* Avatar with upload + preview */}
           <Form.Item label="Avatar" name="avatar">
-            <Input />
+            <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+              <div style={{ flex: 1 }}>
+                <Input placeholder="Hoặc dán URL avatar..." />
+                <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
+                  <Upload {...uploadProps}>
+                    <Button loading={uploadingAvatar}>Chọn ảnh</Button>
+                  </Upload>
+
+                  <Button
+                    onClick={() => form.setFieldValue("avatar", "")}
+                    disabled={uploadingAvatar}
+                  >
+                    Xóa
+                  </Button>
+                </div>
+                <div style={{ marginTop: 6, fontSize: 12, color: "#888" }}>
+                  Hỗ trợ JPG/PNG/WEBP, tối đa 5MB
+                </div>
+              </div>
+
+              <div style={{ width: 90 }}>
+                {form.getFieldValue("avatar") ? (
+                  <Image
+                    src={form.getFieldValue("avatar")}
+                    width={90}
+                    height={90}
+                    style={{ objectFit: "cover", borderRadius: 8 }}
+                    fallback="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90'%3E%3Crect width='100%25' height='100%25' fill='%23eee'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23999' font-size='12'%3ENo Image%3C/text%3E%3C/svg%3E"
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: 90,
+                      height: 90,
+                      borderRadius: 8,
+                      background: "#f5f5f5",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#999",
+                      fontSize: 12,
+                    }}
+                  >
+                    No Image
+                  </div>
+                )}
+              </div>
+            </div>
           </Form.Item>
 
           <Form.Item

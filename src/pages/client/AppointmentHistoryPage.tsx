@@ -131,6 +131,13 @@ const AppointmentHistoryPage = () => {
     );
   };
 
+  const getDoctorAvatar = (appointment: Appointment) => {
+    if (typeof appointment.doctor === "object") {
+      return appointment.doctor?.avatar;
+    }
+    return undefined;
+  };
+
   const getPatientName = (appointment: Appointment) => {
     // API sometimes returns a plain ID in `patient`, sometimes an object in `patientProfile`
     if (appointment.patientProfile?.fullName)
@@ -445,7 +452,13 @@ const AppointmentHistoryPage = () => {
                   <div className="flex flex-col lg:flex-row gap-4">
                     <div className="flex-1">
                       <div className="flex items-start gap-4">
-                        <Avatar size={64} icon={<UserOutlined />} />
+                        <Avatar
+                          size={64}
+                          src={getDoctorAvatar(appointment)}
+                          icon={
+                            !getDoctorAvatar(appointment) && <UserOutlined />
+                          }
+                        />
                         <div className="flex-1">
                           <div className="flex items-start justify-between mb-2 gap-4">
                             <div>
