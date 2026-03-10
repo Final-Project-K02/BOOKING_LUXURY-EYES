@@ -19,8 +19,10 @@ export interface BookingPayload {
       | "UNPAID"
       | "PENDING"
       | "PAID"
+      | "REFUND_PENDING"
       | "FAILED"
       | "EXPIRED"
+      | "REFUNDED"
       | string;
     depositRate?: number;
     depositAmount?: number;
@@ -51,9 +53,14 @@ export interface BookingPayload {
   patientProfileId?: string;
 }
 
-export interface Appointment extends BookingPayload {
+export interface Appointment extends Omit<
+  BookingPayload,
+  "doctor" | "patient" | "room"
+> {
   _id: string;
   reason?: string;
+  canceledBy?: "patient" | "clinic" | string;
+  canceledAt?: string;
   updatedAt?: string;
   createdAt?: string;
 

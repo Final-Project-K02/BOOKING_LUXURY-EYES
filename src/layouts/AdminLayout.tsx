@@ -4,10 +4,12 @@ import {
   DashboardOutlined,
   EyeOutlined,
   LogoutOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
   TeamOutlined,
 } from "@ant-design/icons";
-import { ConfigProvider, Layout, Menu } from "antd";
-import React from "react";
+import { Button, ConfigProvider, Layout, Menu } from "antd";
+import React, { useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { logout } from "../app/features/authSlice";
 import { useAppDispatch } from "../app/hook";
@@ -18,6 +20,7 @@ const AdminLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useAppDispatch();
+  const [collapsed, setCollapsed] = useState(false);
 
   const handleLogout = () => {
     dispatch(logout());
@@ -52,8 +55,10 @@ const AdminLayout: React.FC = () => {
         }}
       >
         <Sider
-          breakpoint="lg"
-          collapsedWidth="0"
+          collapsible
+          collapsed={collapsed}
+          onCollapse={(value) => setCollapsed(value)}
+          collapsedWidth={80}
           width={260}
           style={{
             // ===== CÁC THAY ĐỔI STYLE CHO SIDEBAR =====
@@ -86,7 +91,7 @@ const AdminLayout: React.FC = () => {
             }}
           >
             <EyeOutlined style={{ marginRight: 10, fontSize: 28 }} />
-            Luxury Eyes
+            {!collapsed && "Luxury Eyes"}
           </div>
 
           {/* MENU */}
@@ -127,7 +132,10 @@ const AdminLayout: React.FC = () => {
               // Tạo khoảng cách lớn hoặc divider trước nút đăng xuất
               {
                 type: "divider",
-                style: { margin: "24px 16px", borderColor: "rgba(255,255,255,0.2)" },
+                style: {
+                  margin: "24px 16px",
+                  borderColor: "rgba(255,255,255,0.2)",
+                },
               },
               {
                 key: "/", // Đổi key để tránh navigate nhầm
@@ -156,9 +164,17 @@ const AdminLayout: React.FC = () => {
             boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
           }}
         >
-          <h3 style={{ margin: 0, color: "#0369A1", fontWeight: 700 }}>
-            Admin – Phòng khám mắt
-          </h3>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <Button
+              type="text"
+              onClick={() => setCollapsed(!collapsed)}
+              icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+              aria-label={collapsed ? "Mở rộng sidebar" : "Thu gọn sidebar"}
+            />
+            <h3 style={{ margin: 0, color: "#0369A1", fontWeight: 700 }}>
+              Admin - Phòng khám mắt
+            </h3>
+          </div>
           {/* Có thể thêm Avatar admin ở đây */}
         </Header>
 

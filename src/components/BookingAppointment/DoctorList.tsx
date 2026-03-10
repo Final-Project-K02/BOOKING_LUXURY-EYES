@@ -13,6 +13,8 @@ const DoctorList = ({
   isFetching,
   handleDoctorSelect,
 }: DoctorListProps) => {
+  const formatPrice = (value: number) => value.toLocaleString("vi-VN");
+
   return (
     <div>
       <div className="space-y-3">
@@ -45,7 +47,7 @@ const DoctorList = ({
                   <div className="text-right">
                     <p className="text-xs text-gray-500">Giá khám:</p>
                     <p className="text-lg font-bold text-orange-500">
-                      {doctor.price} đ
+                      {formatPrice(Number(doctor.price) || 0)} đ
                     </p>
                   </div>
                   <Button

@@ -64,7 +64,6 @@ const AppointmentHistoryPage = () => {
       refetchOnReconnect: true,
       refetchOnMountOrArgChange: true,
     },
-
   );
 
   const getAppointments: Appointment[] = data?.data ?? [];
@@ -134,14 +133,19 @@ const AppointmentHistoryPage = () => {
 
   const getPatientName = (appointment: Appointment) => {
     // API sometimes returns a plain ID in `patient`, sometimes an object in `patientProfile`
-    if (appointment.patientProfile?.fullName) return appointment.patientProfile.fullName;
-    if (typeof appointment.patient === "object" && appointment.patient?.fullName)
+    if (appointment.patientProfile?.fullName)
+      return appointment.patientProfile.fullName;
+    if (
+      typeof appointment.patient === "object" &&
+      appointment.patient?.fullName
+    )
       return appointment.patient.fullName;
     return "Không rõ";
   };
 
   const getPatientPhone = (appointment: Appointment) => {
-    if (appointment.patientProfile?.phone) return appointment.patientProfile.phone;
+    if (appointment.patientProfile?.phone)
+      return appointment.patientProfile.phone;
     if (typeof appointment.patient === "object" && appointment.patient?.phone)
       return appointment.patient.phone;
     return "Không có";
@@ -165,6 +169,10 @@ const AppointmentHistoryPage = () => {
         return "Đã thanh toán";
       case "PENDING":
         return "Đang chờ xử lý";
+      case "REFUND_PENDING":
+        return "Đang chờ hoàn tiền";
+      case "REFUNDED":
+        return "Đã hoàn tiền";
       case "EXPIRED":
         return "Hết hạn thanh toán";
       case "FAILED":
@@ -173,6 +181,36 @@ const AppointmentHistoryPage = () => {
       default:
         return "Chưa thanh toán";
     }
+  };
+
+  const getCanceledByText = (appointment: Appointment) => {
+    if (appointment?.canceledBy === "patient") return "Người dùng";
+    if (appointment?.canceledBy === "clinic") return "Phòng khám";
+    return "Không rõ";
+  };
+
+  const getRefundPolicyText = (appointment: Appointment) => {
+    const paymentStatus = appointment?.payment?.paymentStatus;
+
+    if (paymentStatus === "REFUNDED") {
+      return "Được hoàn tiền cọc";
+    }
+
+    if (paymentStatus === "REFUND_PENDING") {
+      return "Đang chờ phòng khám hoàn tiền cọc";
+    }
+
+    if (paymentStatus === "PAID") {
+      if (appointment?.canceledBy === "patient") {
+        return "Không hoàn tiền cọc";
+      }
+      if (appointment?.canceledBy === "clinic") {
+        return "Phòng khám sẽ xử lý hoàn tiền";
+      }
+      return "Đã thanh toán, chưa có thông tin hoàn tiền";
+    }
+
+    return "Chưa thanh toán hoặc không phát sinh hoàn tiền";
   };
 
   const getRemainingSeconds = (expireAt?: string | null) => {
@@ -272,7 +310,6 @@ const AppointmentHistoryPage = () => {
       (apm) =>
         (apm.status === "CANCELED" || apm.status === "REQUEST-CANCELED") &&
         dayjs(apm.updatedAt).isSame(dayjs(), "month"),
-
     ).length;
 
     if (currentMonthCanceledCount >= 4) {
@@ -460,7 +497,6 @@ const AppointmentHistoryPage = () => {
                             </div>
 
                             <div className="flex items-center gap-2 text-sm">
-
                               <EnvironmentOutlined className="text-gray-400" />
                               <span className="truncate">
                                 {appointment.location || "Chưa có thông tin"}
@@ -470,7 +506,6 @@ const AppointmentHistoryPage = () => {
                             <div className="flex items-center gap-2 text-sm">
                               <UserOutlined className="text-gray-400" />
                               <span>{getPatientName(appointment)}</span>
-
                             </div>
 
                             <div className="flex items-center gap-2 text-sm">
@@ -524,6 +559,29 @@ const AppointmentHistoryPage = () => {
                             <div className="mt-4 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-600">
                               Lịch hẹn này đã hết hạn thanh toán. Vui lòng đặt
                               lịch mới nếu bạn muốn tiếp tục.
+                            </div>
+                          )}
+
+                          {appointment.status === "CANCELED" && (
+                            <div className="mt-4 rounded-lg bg-gray-50 border border-gray-200 p-3 text-sm">
+                              <div className="flex flex-wrap gap-x-6 gap-y-1">
+                                <div>
+                                  <span className="text-gray-500">
+                                    Hủy bởi:
+                                  </span>{" "}
+                                  <span className="font-semibold text-gray-700">
+                                    {getCanceledByText(appointment)}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="text-gray-500">
+                                    Hoàn tiền:
+                                  </span>{" "}
+                                  <span className="font-semibold text-gray-700">
+                                    {getRefundPolicyText(appointment)}
+                                  </span>
+                                </div>
+                              </div>
                             </div>
                           )}
                         </div>
@@ -666,6 +724,26 @@ const AppointmentHistoryPage = () => {
                       </span>
                     </div>
                   )}
+
+                {selectedAppointment.status === "CANCELED" && (
+                  <>
+                    <div className="flex justify-between gap-4">
+                      <span className="text-gray-600">Hủy bởi:</span>
+                      <span className="font-medium text-right">
+                        {getCanceledByText(selectedAppointment)}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between gap-4">
+                      <span className="text-gray-600">
+                        Chính sách hoàn tiền:
+                      </span>
+                      <span className="font-medium text-right">
+                        {getRefundPolicyText(selectedAppointment)}
+                      </span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -678,7 +756,6 @@ const AppointmentHistoryPage = () => {
                   <span className="text-gray-600">Họ và tên:</span>
                   <span className="font-medium text-right">
                     {getPatientName(selectedAppointment)}
-
                   </span>
                 </div>
 
@@ -800,6 +877,10 @@ const AppointmentHistoryPage = () => {
                     {selectedAppointment.time} -{" "}
                     {dayjs(selectedAppointment.dateTime).format("YYYY-MM-DD")}
                   </strong>
+                </p>
+                <p className="text-red-700 font-medium mt-2">
+                  Nếu bạn tự hủy lịch, tiền cọc đã thanh toán sẽ không được hoàn
+                  lại.
                 </p>
               </div>
             </div>
