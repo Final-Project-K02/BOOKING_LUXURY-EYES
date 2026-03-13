@@ -5,33 +5,23 @@ import {
   UserOutlined,
 } from "@ant-design/icons";
 import type { MenuProps } from "antd";
-import { Button, Drawer, Dropdown, Menu, message } from "antd";
-import { Link, useNavigate } from "react-router-dom";
+import { Button, Drawer, Dropdown, Menu } from "antd";
+import { Link } from "react-router-dom";
 import { useState } from "react";
 import logo from "../assets/imgs/logoEye.png";
-import { useAppDispatch } from "../app/hook";
-import { logout } from "../app/features/authSlice";
 import AuthModal from "../components/auth/AuthModal";
+import { useAuthHandler } from "../hooks/useAuthHandler";
 
 const HeaderClient = () => {
   const [drawerVisible, setDrawerVisible] = useState(false);
-  const navigate = useNavigate();
-  const dispatch = useAppDispatch();
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<"login" | "register">(
     "login",
   );
+  const { handleLogout } = useAuthHandler();
 
   const user = JSON.parse(localStorage.getItem("user") || "null");
   const isLoggedIn = !!user;
-
-  const handleLogout = () => {
-    dispatch(logout());
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("user");
-    message.success("Đăng xuất thành công!");
-    navigate("/");
-  };
 
   const menuItems: MenuProps["items"] = [];
 
@@ -58,7 +48,7 @@ const HeaderClient = () => {
       key: "logout",
       label: <span style={{ color: "red" }}>Đăng xuất</span>,
       onClick: () => {
-        handleLogout();
+        void handleLogout({ showMessage: true, redirect: "/" });
       },
     },
   ];
@@ -179,7 +169,7 @@ const HeaderClient = () => {
                 danger
                 block
                 onClick={() => {
-                  handleLogout();
+                  void handleLogout({ showMessage: true, redirect: "/" });
                   setDrawerVisible(false);
                 }}
               >

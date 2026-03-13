@@ -39,9 +39,11 @@ const HomePage = () => {
     "login",
   );
 
-  const isAuthenticated =
-    useAppSelector((state) => state.auth.accessToken) ||
-    localStorage.getItem("accessToken");
+  const authState = useAppSelector((state) => state.auth);
+  const hasLocalSession = Boolean(
+    localStorage.getItem("accessToken") && localStorage.getItem("user"),
+  );
+  const isAuthenticated = authState.isAuthenticated || hasLocalSession;
 
   const { data } = useGetDoctorsQuery();
   const doctors: Doctor[] = data?.data ?? [];

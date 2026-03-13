@@ -59,7 +59,7 @@ export interface Appointment extends Omit<
 > {
   _id: string;
   reason?: string;
-  canceledBy?: "patient" | "clinic" | string;
+  canceledBy?: "patient" | "clinic" | "system" | string;
   canceledAt?: string;
   updatedAt?: string;
   createdAt?: string;

@@ -99,20 +99,26 @@ export const useAuthHandler = () => {
     }
   };
 
-  const handleLogout = (options?: {
+  const handleLogout = async (options?: {
     redirect?: string;
     showMessage?: boolean;
     messageText?: string;
-  }) => {
-    dispatch(logoutAction());
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("user");
+  }): Promise<void> => {
+    try {
+      await authService.logout();
+    } catch {
+      // Still clear client state even if server logout fails.
+    } finally {
+      dispatch(logoutAction());
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("user");
 
-    if (options?.showMessage) {
-      message.success(options.messageText ?? "Đăng xuất thành công!");
+      if (options?.showMessage) {
+        message.success(options.messageText ?? "Đăng xuất thành công!");
+      }
+
+      nav(options?.redirect ?? "/");
     }
-
-    nav(options?.redirect ?? "/");
   };
 
   return {
