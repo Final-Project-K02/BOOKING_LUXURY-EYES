@@ -27,6 +27,10 @@ export const authService = {
   resetPassword: async (payload: { token: string; newPassword: string }) => {
     return api.post("/auth/forgot-password", payload);
   },
+
+  logout: async () => {
+    return api.post("/auth/logout");
+  },
 };
 
 export const handleAuthError = (error: unknown): string => {

@@ -46,6 +46,7 @@ const PAYMENT_STATUS_FLOW: Record<string, string[]> = {
 const getCancelByText = (canceledBy?: string) => {
   if (canceledBy === "patient") return "Người dùng";
   if (canceledBy === "clinic") return "Phòng khám";
+  if (canceledBy === "system") return "Hệ thống";
   return "---";
 };
 

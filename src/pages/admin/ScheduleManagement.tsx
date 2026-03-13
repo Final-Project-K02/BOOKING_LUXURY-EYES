@@ -249,7 +249,7 @@ const ScheduleManagement = () => {
   }, []);
 
   const disabledDate = (current: Dayjs) => {
-    return current && current.isBefore(dayjs().startOf("day"));
+    return current && current.isBefore(dayjs().add(1, "day").startOf("day"));
   };
 
   const handleDoctorChange = (doctorId: string) => {

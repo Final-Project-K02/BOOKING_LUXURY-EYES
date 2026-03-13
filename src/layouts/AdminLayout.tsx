@@ -11,22 +11,18 @@ import {
 import { Button, ConfigProvider, Layout, Menu } from "antd";
 import React, { useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { logout } from "../app/features/authSlice";
-import { useAppDispatch } from "../app/hook";
+import { useAuthHandler } from "../hooks/useAuthHandler";
 
 const { Header, Sider, Content } = Layout;
 
 const AdminLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const dispatch = useAppDispatch();
   const [collapsed, setCollapsed] = useState(false);
+  const { handleLogout } = useAuthHandler();
 
-  const handleLogout = () => {
-    dispatch(logout());
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("user");
-    navigate("/auth");
+  const onLogout = () => {
+    void handleLogout({ redirect: "/", showMessage: false });
   };
 
   return (
@@ -101,7 +97,9 @@ const AdminLayout: React.FC = () => {
             // Background transparent để hiện màu gradient của Sider
             style={{ background: "transparent", borderRight: "none" }}
             onClick={({ key }) => {
-              if (key) navigate(key);
+              if (typeof key === "string" && key.startsWith("/admin")) {
+                navigate(key);
+              }
             }}
             items={[
               {
@@ -138,11 +136,11 @@ const AdminLayout: React.FC = () => {
                 },
               },
               {
-                key: "/", // Đổi key để tránh navigate nhầm
+                key: "logout",
                 icon: <LogoutOutlined />,
                 label: "Đăng xuất",
                 style: { color: "#ffcfcf" }, // Màu đỏ nhạt cho cảnh báo
-                onClick: handleLogout,
+                onClick: onLogout,
               },
             ]}
           />

@@ -193,11 +193,16 @@ const AppointmentHistoryPage = () => {
   const getCanceledByText = (appointment: Appointment) => {
     if (appointment?.canceledBy === "patient") return "Người dùng";
     if (appointment?.canceledBy === "clinic") return "Phòng khám";
+    if (appointment?.canceledBy === "system") return "Hệ thống";
     return "Không rõ";
   };
 
   const getRefundPolicyText = (appointment: Appointment) => {
     const paymentStatus = appointment?.payment?.paymentStatus;
+
+    if (paymentStatus === "EXPIRED" || appointment?.canceledBy === "system") {
+      return "Lịch đã bị hệ thống tự động hủy do hết hạn thanh toán";
+    }
 
     if (paymentStatus === "REFUNDED") {
       return "Được hoàn tiền cọc";
@@ -231,6 +236,20 @@ const AppointmentHistoryPage = () => {
     const remainSeconds = seconds % 60;
 
     return `${String(minutes).padStart(2, "0")}:${String(remainSeconds).padStart(2, "0")}`;
+  };
+
+  const getPatientCanceledCountThisMonth = () => {
+    const currentMonth = dayjs();
+
+    return getAppointments.filter((appointment) => {
+      if (appointment.status !== "CANCELED") return false;
+      if (appointment.canceledBy !== "patient") return false;
+
+      const canceledDate = appointment.canceledAt || appointment.updatedAt;
+      return canceledDate
+        ? dayjs(canceledDate).isSame(currentMonth, "month")
+        : false;
+    }).length;
   };
 
   const canPayAgain = (appointment: Appointment) => {
@@ -313,11 +332,7 @@ const AppointmentHistoryPage = () => {
 
     const reason = cancelReason === "other" ? otherReason : cancelReason;
 
-    const currentMonthCanceledCount = getAppointments.filter(
-      (apm) =>
-        (apm.status === "CANCELED" || apm.status === "REQUEST-CANCELED") &&
-        dayjs(apm.updatedAt).isSame(dayjs(), "month"),
-    ).length;
+    const currentMonthCanceledCount = getPatientCanceledCountThisMonth();
 
     if (currentMonthCanceledCount >= 4) {
       message.error("Bạn đã đạt giới hạn 4 lượt hủy trong tháng này");
@@ -344,9 +359,9 @@ const AppointmentHistoryPage = () => {
       }
 
       refetch();
-    } catch (error) {
+    } catch (error: any) {
       console.log(error);
-      message.error("Thao tác thất bại");
+      message.error(error?.data?.message || "Thao tác thất bại");
     }
 
     setCancelModalVisible(false);
@@ -839,7 +854,10 @@ const AppointmentHistoryPage = () => {
               </h4>
               <p className="text-sm text-gray-600 line-clamp-3 text-right max-w-[70%]">
                 {selectedAppointment?.status === "CANCELED"
-                  ? selectedAppointment.reason || "Không có lý do hủy"
+                  ? selectedAppointment.reason ||
+                    (selectedAppointment.canceledBy === "system"
+                      ? "Hệ thống tự động hủy do quá hạn thanh toán"
+                      : "Không có lý do hủy")
                   : selectedAppointment?.symptoms || "Không có"}
               </p>
             </div>

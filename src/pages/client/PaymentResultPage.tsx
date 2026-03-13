@@ -42,6 +42,7 @@ const PaymentResultPage = () => {
   });
 
   const appointmentStatus = statusData?.data?.status;
+  const paymentStatus = statusData?.data?.paymentStatus;
 
   const appointmentStatusLabel = useMemo(() => {
     if (!appointmentStatus) return undefined;
@@ -50,10 +51,14 @@ const PaymentResultPage = () => {
         return "Chờ thanh toán";
       case "CONFIRM":
         return "Đã xác nhận";
+      case "CANCELED":
+        return paymentStatus === "EXPIRED"
+          ? "Đã bị hệ thống hủy do hết hạn thanh toán"
+          : "Đã hủy";
       default:
         return appointmentStatus;
     }
-  }, [appointmentStatus]);
+  }, [appointmentStatus, paymentStatus]);
 
   const message = useMemo(() => {
     if (isError) {
@@ -68,8 +73,12 @@ const PaymentResultPage = () => {
       return "Giao dịch đã được xác nhận. Bạn có thể kiểm tra trạng thái tại trang Lịch khám.";
     }
 
+    if (appointmentStatus === "CANCELED" && paymentStatus === "EXPIRED") {
+      return "Thời gian thanh toán đã hết hạn. Lịch hẹn đã được hệ thống tự động hủy.";
+    }
+
     return "Thanh toán không thành công. Vui lòng thử lại hoặc kiểm tra lại thông tin.";
-  }, [isError, success, txnRef]);
+  }, [appointmentStatus, isError, paymentStatus, success, txnRef]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-10">

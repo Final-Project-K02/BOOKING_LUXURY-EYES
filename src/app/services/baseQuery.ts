@@ -1,17 +1,65 @@
-import { fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import {
+  fetchBaseQuery,
+  type BaseQueryFn,
+  type FetchArgs,
+  type FetchBaseQueryError,
+} from "@reduxjs/toolkit/query/react";
 import type { RootState } from "../store";
 import { API_BASE_URL } from "../../config";
+import {
+  clearStoredAuth,
+  getStoredAccessToken,
+  getStoredUser,
+  refreshAccessToken,
+  setStoredAccessToken,
+} from "../../api/authToken";
+import { logout, setAuth } from "../features/authSlice";
+import type { User } from "../../types/User";
 
-export const createBaseQuery = () =>
-  fetchBaseQuery({
+export const createBaseQuery = (): BaseQueryFn<
+  string | FetchArgs,
+  unknown,
+  FetchBaseQueryError
+> => {
+  const rawBaseQuery = fetchBaseQuery({
     baseUrl: API_BASE_URL,
+    credentials: "include",
     prepareHeaders: (headers, { getState }) => {
       const token =
-        (getState() as RootState).auth.accessToken ||
-        localStorage.getItem("accessToken");
+        getStoredAccessToken() || (getState() as RootState).auth.accessToken;
+
       if (token) {
         headers.set("authorization", `Bearer ${token}`);
       }
+
       return headers;
     },
   });
+
+  return async (args, api, extraOptions) => {
+    let result = await rawBaseQuery(args, api, extraOptions);
+
+    if (result.error?.status === 401) {
+      const newToken = await refreshAccessToken();
+
+      if (newToken) {
+        const stateUser = (api.getState() as RootState).auth.user;
+        const user = stateUser || getStoredUser<User>();
+
+        if (user) {
+          setStoredAccessToken(newToken);
+          api.dispatch(setAuth({ user, accessToken: newToken }));
+          result = await rawBaseQuery(args, api, extraOptions);
+        } else {
+          clearStoredAuth();
+          api.dispatch(logout());
+        }
+      } else {
+        clearStoredAuth();
+        api.dispatch(logout());
+      }
+    }
+
+    return result;
+  };
+};
