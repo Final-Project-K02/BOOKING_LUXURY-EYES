@@ -36,6 +36,11 @@ import { skipToken } from "@reduxjs/toolkit/query";
 
 const { TextArea } = Input;
 
+const CANCEL_REASON_OPTIONS = {
+  busy: "Bận việc đột xuất",
+  rescheduled: "Muốn đổi lịch khác",
+} as const;
+
 export type AppointmentStatus =
   | "PENDING"
   | "CONFIRM"
@@ -330,7 +335,12 @@ const AppointmentHistoryPage = () => {
       return;
     }
 
-    const reason = cancelReason === "other" ? otherReason : cancelReason;
+    const reason =
+      cancelReason === "other"
+        ? otherReason.trim()
+        : CANCEL_REASON_OPTIONS[
+            cancelReason as keyof typeof CANCEL_REASON_OPTIONS
+          ] || cancelReason;
 
     const currentMonthCanceledCount = getPatientCanceledCountThisMonth();
 

@@ -1,4 +1,13 @@
-import { Button, Descriptions, Modal, Select, Table, Tag, message } from "antd";
+import {
+  Button,
+  Descriptions,
+  Input,
+  Modal,
+  Select,
+  Table,
+  Tag,
+  message,
+} from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useState } from "react";
 import api from "../../api";
@@ -43,6 +52,21 @@ const PAYMENT_STATUS_FLOW: Record<string, string[]> = {
   REFUNDED: [],
 };
 
+const buildCanceledReason = (appointment: Appointment, adminNote: string) => {
+  const userReason = appointment.reason?.trim();
+  const clinicReason = adminNote.trim();
+
+  if (userReason && clinicReason) {
+    return `${userReason}\n${clinicReason}`;
+  }
+
+  if (clinicReason) {
+    return `${clinicReason}`;
+  }
+
+  return userReason || undefined;
+};
+
 const getCancelByText = (canceledBy?: string) => {
   if (canceledBy === "patient") return "Người dùng";
   if (canceledBy === "clinic") return "Phòng khám";
@@ -67,11 +91,18 @@ const getPatientName = (record: Appointment): string => {
 };
 
 const AppointmentManagement = () => {
+  const { TextArea } = Input;
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [detailModalVisible, setDetailModalVisible] = useState<boolean>(false);
   const [selectedAppointment, setSelectedAppointment] =
     useState<Appointment | null>(null);
+  const [cancelConfirmVisible, setCancelConfirmVisible] =
+    useState<boolean>(false);
+  const [appointmentToCancel, setAppointmentToCancel] =
+    useState<Appointment | null>(null);
+  const [adminCancelNote, setAdminCancelNote] = useState<string>("");
+  const [submittingCancel, setSubmittingCancel] = useState<boolean>(false);
 
   const fetchAppointments = async () => {
     try {
@@ -89,9 +120,16 @@ const AppointmentManagement = () => {
     fetchAppointments();
   }, []);
 
-  const updateStatus = async (id: string, status: AppointmentStatus) => {
+  const updateStatus = async (
+    id: string,
+    status: AppointmentStatus,
+    reason?: string,
+  ) => {
     try {
-      await api.patch(`/appointments/${id}`, { status });
+      await api.patch(`/appointments/${id}`, {
+        status,
+        ...(reason ? { reason } : {}),
+      });
       message.success("Cập nhật trạng thái thành công");
       fetchAppointments();
     } catch {
@@ -127,6 +165,13 @@ const AppointmentManagement = () => {
     const currentLabel = STATUS_MAP[record.status]?.text || record.status;
     const nextLabel = STATUS_MAP[nextStatus]?.text || nextStatus;
 
+    if (nextStatus === "CANCELED") {
+      setAppointmentToCancel(record);
+      setAdminCancelNote("");
+      setCancelConfirmVisible(true);
+      return;
+    }
+
     Modal.confirm({
       title: "Xác nhận đổi trạng thái lịch",
       content: `Bạn có chắc muốn đổi từ "${currentLabel}" sang "${nextLabel}"?`,
@@ -140,6 +185,36 @@ const AppointmentManagement = () => {
         updateStatus(record._id, nextStatus);
       },
     });
+  };
+
+  const handleCloseCancelConfirm = () => {
+    setCancelConfirmVisible(false);
+    setAppointmentToCancel(null);
+    setAdminCancelNote("");
+  };
+
+  const handleConfirmCancelStatus = async () => {
+    if (!appointmentToCancel?._id) {
+      message.error("Không tìm thấy ID lịch hẹn");
+      return;
+    }
+
+    if (!adminCancelNote.trim()) {
+      message.error("Vui lòng nhập ghi chú hủy lịch của phòng khám");
+      return;
+    }
+
+    try {
+      setSubmittingCancel(true);
+      await updateStatus(
+        appointmentToCancel._id,
+        "CANCELED",
+        buildCanceledReason(appointmentToCancel, adminCancelNote),
+      );
+      handleCloseCancelConfirm();
+    } finally {
+      setSubmittingCancel(false);
+    }
   };
 
   const confirmUpdatePaymentStatus = (
@@ -504,6 +579,50 @@ const AppointmentManagement = () => {
               </Descriptions.Item>
             )}
           </Descriptions>
+        )}
+      </Modal>
+
+      <Modal
+        title="Xác nhận hủy lịch"
+        open={cancelConfirmVisible}
+        onCancel={handleCloseCancelConfirm}
+        onOk={handleConfirmCancelStatus}
+        okText="Xác nhận hủy"
+        cancelText="Đóng"
+        okButtonProps={{ danger: true }}
+        confirmLoading={submittingCancel}
+      >
+        {appointmentToCancel && (
+          <div style={{ display: "grid", gap: 12 }}>
+            <div>
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>Bệnh nhân</div>
+              <div>{getPatientName(appointmentToCancel)}</div>
+            </div>
+
+            <div>
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                Lý do hủy từ người dùng
+              </div>
+              <div>
+                {appointmentToCancel.reason?.trim() ||
+                  "Chưa có lý do từ người dùng"}
+              </div>
+            </div>
+
+            <div>
+              <div style={{ fontWeight: 600, marginBottom: 8 }}>
+                Ghi chú hủy của phòng khám
+              </div>
+              <TextArea
+                rows={4}
+                maxLength={500}
+                showCount
+                value={adminCancelNote}
+                placeholder="Nhập ghi chú của admin trước khi xác nhận hủy"
+                onChange={(e) => setAdminCancelNote(e.target.value)}
+              />
+            </div>
+          </div>
         )}
       </Modal>
     </>

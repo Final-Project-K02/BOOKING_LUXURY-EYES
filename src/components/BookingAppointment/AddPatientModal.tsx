@@ -57,7 +57,7 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({
     } else {
       form.resetFields();
     }
-  }, [visible, editingPatient, isEditing]);
+  }, [visible, editingPatient, isEditing, form]);
 
   const handleOk = async () => {
     try {
@@ -79,6 +79,10 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({
   const handleCancel = () => {
     form.resetFields();
     onCancel();
+  };
+
+  const disableFutureDate = (current: dayjs.Dayjs) => {
+    return current && current > dayjs().endOf("day");
   };
 
   return (
@@ -118,9 +122,27 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({
           <Form.Item
             name="dateOfBirth"
             label="Ngày sinh"
-            rules={[{ required: true, message: "Vui lòng chọn ngày sinh" }]}
+            rules={[
+              { required: true, message: "Vui lòng chọn ngày sinh" },
+              {
+                validator: (_, value) => {
+                  if (!value || dayjs(value).isSameOrBefore(dayjs(), "day")) {
+                    return Promise.resolve();
+                  }
+
+                  return Promise.reject(
+                    new Error("Ngày sinh không được lớn hơn ngày hiện tại"),
+                  );
+                },
+              },
+            ]}
           >
-            <DatePicker size="large" className="w-full" format="DD/MM/YYYY" />
+            <DatePicker
+              size="large"
+              className="w-full"
+              format="DD/MM/YYYY"
+              disabledDate={disableFutureDate}
+            />
           </Form.Item>
 
           {/* Giới tính */}
