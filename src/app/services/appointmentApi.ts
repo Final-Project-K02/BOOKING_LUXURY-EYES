@@ -31,6 +31,11 @@ export const appointmentApi = createApi({
       ],
     }),
 
+    getAppointmentDetail: builder.query<{ data: Appointment }, string>({
+      query: (id) => `appointments/${id}`,
+      providesTags: (_r, _e, id) => [{ type: "Appointments", id }],
+    }),
+
     createBooking: builder.mutation<
       { message: string; data: Appointment },
       BookingPayload
@@ -114,6 +119,7 @@ export const {
   useGetAppointmentsQuery,
   useGetBookingByScheduleIdQuery,
   useGetAppointmentsByDoctorQuery,
+  useLazyGetAppointmentDetailQuery,
   useCreateBookingMutation,
   useCreateVnpayLinkMutation,
   useCancelAppointmentMutation,

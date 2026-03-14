@@ -28,6 +28,7 @@ import {
   useCancelAppointmentConfirmMutation,
   useCancelAppointmentMutation,
   useCreateVnpayLinkMutation,
+  useLazyGetAppointmentDetailQuery,
   useGetAppointmentsQuery,
 } from "../../app/services/appointmentApi";
 import type { Appointment } from "../../types/Booking";
@@ -35,6 +36,11 @@ import { useAppSelector } from "../../app/hook";
 import { skipToken } from "@reduxjs/toolkit/query";
 
 const { TextArea } = Input;
+
+const CANCEL_REASON_OPTIONS = {
+  busy: "Bận việc đột xuất",
+  rescheduled: "Muốn đổi lịch khác",
+} as const;
 
 export type AppointmentStatus =
   | "PENDING"
@@ -73,6 +79,8 @@ const AppointmentHistoryPage = () => {
   const [cancelAppointmentConfirm] = useCancelAppointmentConfirmMutation();
   const [createVnpayLink, { isLoading: isPayingAgain }] =
     useCreateVnpayLinkMutation();
+  const [getAppointmentDetail, { isFetching: isDetailLoading }] =
+    useLazyGetAppointmentDetailQuery();
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -178,6 +186,8 @@ const AppointmentHistoryPage = () => {
         return "Đang chờ xử lý";
       case "REFUND_PENDING":
         return "Đang chờ hoàn tiền";
+      case "NO_REFUND":
+        return "Không hoàn tiền";
       case "REFUNDED":
         return "Đã hoàn tiền";
       case "EXPIRED":
@@ -205,11 +215,15 @@ const AppointmentHistoryPage = () => {
     }
 
     if (paymentStatus === "REFUNDED") {
-      return "Được hoàn tiền cọc";
+      return "Đã hoàn tiền cọc";
     }
 
     if (paymentStatus === "REFUND_PENDING") {
       return "Đang chờ phòng khám hoàn tiền cọc";
+    }
+
+    if (paymentStatus === "NO_REFUND") {
+      return "Không hoàn tiền cọc";
     }
 
     if (paymentStatus === "PAID") {
@@ -282,9 +296,20 @@ const AppointmentHistoryPage = () => {
     return filtered;
   };
 
-  const handleViewDetail = (appointment: Appointment) => {
+  const handleViewDetail = async (appointment: Appointment) => {
     setSelectedAppointment(appointment);
     setDetailModalVisible(true);
+
+    if (!appointment?._id) return;
+
+    try {
+      const detailRes = await getAppointmentDetail(appointment._id).unwrap();
+      if (detailRes?.data) {
+        setSelectedAppointment(detailRes.data);
+      }
+    } catch {
+      message.error("Không thể tải chi tiết lịch hẹn");
+    }
   };
 
   const handleCancelAppointment = (appointment: Appointment) => {
@@ -330,7 +355,12 @@ const AppointmentHistoryPage = () => {
       return;
     }
 
-    const reason = cancelReason === "other" ? otherReason : cancelReason;
+    const reason =
+      cancelReason === "other"
+        ? otherReason.trim()
+        : CANCEL_REASON_OPTIONS[
+            cancelReason as keyof typeof CANCEL_REASON_OPTIONS
+          ] || cancelReason;
 
     const currentMonthCanceledCount = getPatientCanceledCountThisMonth();
 
@@ -674,6 +704,9 @@ const AppointmentHistoryPage = () => {
         ]}
         width={600}
       >
+        {isDetailLoading && (
+          <div className="text-sm text-gray-500">Đang tải chi tiết...</div>
+        )}
         {selectedAppointment && (
           <div className="space-y-4">
             <div
