@@ -905,7 +905,9 @@ const AppointmentManagement = () => {
           </Descriptions>
         )}
 
-        {detailLoading && <div style={{ marginTop: 12 }}>Đang tải chi tiết...</div>}
+        {detailLoading && (
+          <div style={{ marginTop: 12 }}>Đang tải chi tiết...</div>
+        )}
       </Modal>
 
       <Modal

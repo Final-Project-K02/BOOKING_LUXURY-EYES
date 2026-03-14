@@ -12,6 +12,7 @@ import {
   Popconfirm,
   Space,
   Table,
+  Tooltip,
   Upload,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
@@ -46,8 +47,6 @@ interface DoctorFormValues {
   email?: string;
   phone?: string;
   description?: string;
-  email?: string;
-  phone?: string;
 }
 
 const DoctorManagement: React.FC = () => {
@@ -101,12 +100,21 @@ const DoctorManagement: React.FC = () => {
   };
 
   const handleSubmit = async (values: DoctorFormValues) => {
+    const payload: DoctorFormValues = {
+      ...values,
+      name: values.name?.trim(),
+      avatar: values.avatar?.trim() || undefined,
+      email: values.email?.trim() || undefined,
+      phone: values.phone?.trim() || undefined,
+      description: values.description?.trim() || undefined,
+    };
+
     try {
       if (editingDoctor) {
-        await api.put(`/doctors/${editingDoctor._id}`, values);
+        await api.put(`/doctors/${editingDoctor._id}`, payload);
         message.success("Cập nhật bác sĩ thành công");
       } else {
-        await api.post("/doctors", values);
+        await api.post("/doctors", payload);
         message.success("Thêm bác sĩ thành công");
       }
 
@@ -179,7 +187,12 @@ const DoctorManagement: React.FC = () => {
   };
 
   const columns: ColumnsType<Doctor> = [
-    { title: "Tên bác sĩ", dataIndex: "name" },
+    {
+      title: "Tên bác sĩ",
+      dataIndex: "name",
+      width: 160,
+      ellipsis: true,
+    },
     {
       title: "Ảnh",
       dataIndex: "avatar",
@@ -206,32 +219,55 @@ const DoctorManagement: React.FC = () => {
     {
       title: "Giá khám",
       dataIndex: "price",
+      width: 130,
       render: (price: number) => `${price.toLocaleString()} đ`,
     },
     {
       title: "Kinh nghiệm",
       dataIndex: "experience_year",
+      width: 120,
       render: (year: number) => `${year} năm`,
     },
     {
       title: "Mô tả",
       dataIndex: "description",
+      width: 180,
       ellipsis: true,
       render: (text) => text || "—",
     },
     {
       title: "Email",
       dataIndex: "email",
-      render: (text: string) => text || "—",
+      width: 220,
+      render: (text: string) =>
+        text ? (
+          <Tooltip title={text}>
+            <span
+              style={{
+                display: "inline-block",
+                maxWidth: 200,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {text}
+            </span>
+          </Tooltip>
+        ) : (
+          "—"
+        ),
     },
     {
       title: "Số điện thoại",
       dataIndex: "phone",
+      width: 140,
       render: (text: string) => text || "—",
     },
     {
       title: "Trạng thái",
       dataIndex: "is_active",
+      width: 150,
       render: (active) =>
         active ? (
           <span style={{ color: "green" }}>Đang hoạt động</span>
@@ -242,8 +278,9 @@ const DoctorManagement: React.FC = () => {
 
     {
       title: "Hành động",
+      width: 210,
       render: (_, record) => (
-        <Space>
+        <Space size="small" wrap>
           {/* Sửa */}
           <Button
             type="link"
@@ -371,6 +408,7 @@ const DoctorManagement: React.FC = () => {
         loading={loading}
         columns={columns}
         dataSource={doctors}
+        scroll={{ x: 1400 }}
       />
 
       <Modal
@@ -407,13 +445,39 @@ const DoctorManagement: React.FC = () => {
           <Form.Item
             label="Tên bác sĩ"
             name="name"
-            rules={[{ required: true }]}
+            rules={[
+              {
+                required: true,
+                whitespace: true,
+                message: "Tên bác sĩ là bắt buộc",
+              },
+            ]}
           >
             <Input />
           </Form.Item>
 
           {/* Avatar with upload + preview */}
-          <Form.Item label="Avatar" name="avatar">
+          <Form.Item
+            label="Avatar"
+            name="avatar"
+            rules={[
+              {
+                validator: async (_, value: string | undefined) => {
+                  if (!value || !value.trim()) return Promise.resolve();
+
+                  try {
+                    // Validate URL format giống rule zod.url() ở BE
+                    new URL(value.trim());
+                    return Promise.resolve();
+                  } catch {
+                    return Promise.reject(
+                      new Error("Avatar phải là URL hợp lệ"),
+                    );
+                  }
+                },
+              },
+            ]}
+          >
             <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
               <div style={{ flex: 1 }}>
                 <Input placeholder="Hoặc dán URL avatar..." />
@@ -467,12 +531,26 @@ const DoctorManagement: React.FC = () => {
           <Form.Item
             label="Số năm kinh nghiệm"
             name="experience_year"
-            rules={[{ required: true }]}
+            rules={[
+              { required: true, message: "Số năm kinh nghiệm là bắt buộc" },
+              {
+                type: "number",
+                min: 0,
+                message: "Số năm kinh nghiệm phải >= 0",
+              },
+            ]}
           >
             <InputNumber style={{ width: "100%" }} min={0} />
           </Form.Item>
 
-          <Form.Item label="Giá khám" name="price" rules={[{ required: true }]}>
+          <Form.Item
+            label="Giá khám"
+            name="price"
+            rules={[
+              { required: true, message: "Giá khám là bắt buộc" },
+              { type: "number", min: 0, message: "Giá khám phải >= 0" },
+            ]}
+          >
             <InputNumber
               style={{ width: "100%" }}
               min={0}
@@ -484,11 +562,37 @@ const DoctorManagement: React.FC = () => {
             />
           </Form.Item>
 
-          <Form.Item label="Email" name="email">
+          <Form.Item
+            label="Email"
+            name="email"
+            rules={[
+              {
+                required: !editingDoctor,
+                message: "Email là bắt buộc",
+              },
+              {
+                type: "email",
+                message: "Email không hợp lệ",
+              },
+            ]}
+          >
             <Input />
           </Form.Item>
 
-          <Form.Item label="Số điện thoại" name="phone">
+          <Form.Item
+            label="Số điện thoại"
+            name="phone"
+            rules={[
+              {
+                required: !editingDoctor,
+                message: "Số điện thoại là bắt buộc",
+              },
+              {
+                pattern: /^0\d{9}$/,
+                message: "Số điện thoại không hợp lệ",
+              },
+            ]}
+          >
             <Input />
           </Form.Item>
 
