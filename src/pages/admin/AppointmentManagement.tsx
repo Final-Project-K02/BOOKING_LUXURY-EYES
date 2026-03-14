@@ -1,5 +1,6 @@
 import {
   Button,
+  DatePicker,
   Descriptions,
   Input,
   Modal,
@@ -11,8 +12,12 @@ import {
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useState } from "react";
+import dayjs from "dayjs";
+import { useSearchParams } from "react-router-dom";
 import api from "../../api";
 import type { Appointment } from "../../types/Booking";
+import type { Doctor } from "../../types/Doctor";
+import type { Dayjs } from "dayjs";
 import type { AppointmentStatus } from "../client/AppointmentHistoryPage";
 
 /* ================== STATUS MAP ================== */
@@ -36,6 +41,14 @@ const STATUS_FLOW: Record<AppointmentStatus, AppointmentStatus[]> = {
   CANCELED: [],
   "REQUEST-CANCELED": ["CANCELED"],
 };
+
+const FILTERABLE_STATUSES: AppointmentStatus[] = [
+  "PENDING",
+  "CONFIRM",
+  "CHECKIN",
+  "DONE",
+  "CANCELED",
+];
 
 const PAYMENT_STATUS_MAP: Record<string, { text: string; color: string }> = {
   PAID: { text: "Đã thanh toán", color: "green" },
@@ -77,11 +90,31 @@ const isPaid = (appointment: Appointment) => {
 };
 
 const getPatientName = (record: Appointment): string => {
+  if (record.patientProfile?.fullName) {
+    return record.patientProfile.fullName;
+  }
   if (typeof record.patient === "object" && record.patient?.fullName) {
     return record.patient.fullName;
   }
-  if (record.patientProfile?.fullName) {
-    return record.patientProfile.fullName;
+  return "---";
+};
+
+const getPatientPhone = (record: Appointment): string => {
+  if (record.patientProfile?.phone) {
+    return record.patientProfile.phone;
+  }
+  if (typeof record.patient === "object" && record.patient?.phone) {
+    return record.patient.phone;
+  }
+  return "---";
+};
+
+const getBookingAccountEmail = (record: Appointment): string => {
+  if (typeof record.patient === "object" && record.patient?.email) {
+    return record.patient.email;
+  }
+  if (record.patientProfile?.email) {
+    return record.patientProfile.email;
   }
   return "---";
 };
@@ -97,10 +130,24 @@ const requiresRefundChoice = (appointment: Appointment | null) => {
   );
 };
 
+const toArrayQueryValue = (value?: string | null) => {
+  if (!value) return [];
+
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+};
+
 const AppointmentManagement = () => {
   const { TextArea } = Input;
+  const { RangePicker } = DatePicker;
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const [detailLoading, setDetailLoading] = useState<boolean>(false);
   const [detailModalVisible, setDetailModalVisible] = useState<boolean>(false);
   const [selectedAppointment, setSelectedAppointment] =
     useState<Appointment | null>(null);
@@ -113,11 +160,104 @@ const AppointmentManagement = () => {
     undefined,
   );
   const [submittingCancel, setSubmittingCancel] = useState<boolean>(false);
+  const [dateRange, setDateRange] = useState<
+    [Dayjs | null, Dayjs | null] | null
+  >(null);
+  const [statusFilters, setStatusFilters] = useState<AppointmentStatus[]>([]);
+  const [paymentStatusFilters, setPaymentStatusFilters] = useState<string[]>(
+    [],
+  );
+  const [doctorFilter, setDoctorFilter] = useState<string | undefined>(
+    undefined,
+  );
+  const [patientKeyword, setPatientKeyword] = useState<string>("");
 
-  const fetchAppointments = async () => {
+  const buildFilterParams = (filters?: {
+    dateRange: [Dayjs | null, Dayjs | null] | null;
+    statusFilters: AppointmentStatus[];
+    paymentStatusFilters: string[];
+    doctorFilter?: string;
+    patientKeyword: string;
+  }) => {
+    const source = filters ?? {
+      dateRange,
+      statusFilters,
+      paymentStatusFilters,
+      doctorFilter,
+      patientKeyword,
+    };
+    const params: Record<string, string> = {};
+
+    if (source.dateRange?.[0]) {
+      params.dateFrom = source.dateRange[0].format("YYYY-MM-DD");
+    }
+
+    if (source.dateRange?.[1]) {
+      params.dateTo = source.dateRange[1].format("YYYY-MM-DD");
+    }
+
+    if (source.statusFilters.length > 0) {
+      params.status = source.statusFilters.join(",");
+    }
+
+    if (source.paymentStatusFilters.length > 0) {
+      params.paymentStatus = source.paymentStatusFilters.join(",");
+    }
+
+    if (source.doctorFilter) {
+      params.doctorId = source.doctorFilter;
+    }
+
+    if (source.patientKeyword.trim()) {
+      params.patientKeyword = source.patientKeyword.trim();
+    }
+
+    return params;
+  };
+
+  const getFiltersFromSearchParams = () => {
+    const dateFrom = searchParams.get("dateFrom");
+    const dateTo = searchParams.get("dateTo");
+
+    const dateFromDayjs = dateFrom ? dayjs(dateFrom) : null;
+    const dateToDayjs = dateTo ? dayjs(dateTo) : null;
+    const resolvedDateRange =
+      dateFromDayjs?.isValid() || dateToDayjs?.isValid()
+        ? [
+            dateFromDayjs?.isValid() ? dateFromDayjs : null,
+            dateToDayjs?.isValid() ? dateToDayjs : null,
+          ]
+        : null;
+
+    const statusSet = new Set(FILTERABLE_STATUSES);
+    const paymentStatusSet = new Set(Object.keys(PAYMENT_STATUS_MAP));
+
+    const resolvedStatusFilters = toArrayQueryValue(searchParams.get("status"))
+      .filter((value) => statusSet.has(value))
+      .map((value) => value as AppointmentStatus);
+
+    const resolvedPaymentStatusFilters = toArrayQueryValue(
+      searchParams.get("paymentStatus"),
+    ).filter((value) => paymentStatusSet.has(value));
+
+    const resolvedDoctorFilter = searchParams.get("doctorId") || undefined;
+    const resolvedPatientKeyword = searchParams.get("patientKeyword") || "";
+
+    return {
+      dateRange: resolvedDateRange,
+      statusFilters: resolvedStatusFilters,
+      paymentStatusFilters: resolvedPaymentStatusFilters,
+      doctorFilter: resolvedDoctorFilter,
+      patientKeyword: resolvedPatientKeyword,
+    };
+  };
+
+  const fetchAppointments = async (customParams?: Record<string, string>) => {
     try {
       setLoading(true);
-      const res = await api.get<{ data: Appointment[] }>("/appointments");
+      const res = await api.get<{ data: Appointment[] }>("/appointments", {
+        params: customParams ?? buildFilterParams(),
+      });
       setAppointments(res.data.data ?? []);
     } catch {
       message.error("Không thể tải lịch hẹn");
@@ -126,9 +266,72 @@ const AppointmentManagement = () => {
     }
   };
 
+  const fetchDoctors = async () => {
+    try {
+      const res = await api.get<{ data: Doctor[] }>("/doctors/admin");
+      setDoctors(res.data.data ?? []);
+    } catch {
+      message.error("Không thể tải danh sách bác sĩ");
+    }
+  };
+
+  const fetchAppointmentDetail = async (id: string) => {
+    try {
+      setDetailLoading(true);
+      const res = await api.get<{ data: Appointment }>(`/appointments/${id}`);
+      return res.data.data;
+    } catch {
+      message.error("Không thể tải chi tiết lịch hẹn");
+      return null;
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const handleViewDetail = async (record: Appointment) => {
+    setSelectedAppointment(record);
+    setDetailModalVisible(true);
+
+    if (!record._id) {
+      return;
+    }
+
+    const detailData = await fetchAppointmentDetail(record._id);
+    if (detailData) {
+      setSelectedAppointment(detailData);
+    }
+  };
+
   useEffect(() => {
-    fetchAppointments();
+    fetchDoctors();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const filtersFromUrl = getFiltersFromSearchParams();
+
+    setDateRange(filtersFromUrl.dateRange);
+    setStatusFilters(filtersFromUrl.statusFilters);
+    setPaymentStatusFilters(filtersFromUrl.paymentStatusFilters);
+    setDoctorFilter(filtersFromUrl.doctorFilter);
+    setPatientKeyword(filtersFromUrl.patientKeyword);
+
+    fetchAppointments(buildFilterParams(filtersFromUrl));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  const handleApplyFilters = () => {
+    setSearchParams(buildFilterParams());
+  };
+
+  const handleResetFilters = () => {
+    setDateRange(null);
+    setStatusFilters([]);
+    setPaymentStatusFilters([]);
+    setDoctorFilter(undefined);
+    setPatientKeyword("");
+    setSearchParams({});
+  };
 
   const updateStatus = async (
     id: string,
@@ -382,8 +585,7 @@ const AppointmentManagement = () => {
             <Button
               type="link"
               onClick={() => {
-                setSelectedAppointment(record);
-                setDetailModalVisible(true);
+                handleViewDetail(record);
               }}
             >
               Xem chi tiết
@@ -424,11 +626,78 @@ const AppointmentManagement = () => {
 
   return (
     <>
-      <div style={{ marginBottom: 12 }}>
-        <Button loading={loading} onClick={fetchAppointments}>
-          Load dữ liệu
-        </Button>
+      <div
+        style={{
+          marginBottom: 16,
+          display: "grid",
+          gap: 12,
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+        }}
+      >
+        <RangePicker
+          value={dateRange}
+          onChange={(values) => setDateRange(values)}
+          format="DD/MM/YYYY"
+          allowClear
+        />
+
+        <Select
+          mode="multiple"
+          allowClear
+          placeholder="Trạng thái lịch"
+          value={statusFilters}
+          onChange={(values) => setStatusFilters(values as AppointmentStatus[])}
+          options={FILTERABLE_STATUSES.map((status) => ({
+            value: status,
+            label: STATUS_MAP[status].text,
+          }))}
+        />
+
+        <Select
+          mode="multiple"
+          allowClear
+          placeholder="Trạng thái thanh toán"
+          value={paymentStatusFilters}
+          onChange={(values) => setPaymentStatusFilters(values)}
+          options={Object.entries(PAYMENT_STATUS_MAP).map(
+            ([value, config]) => ({
+              value,
+              label: config.text,
+            }),
+          )}
+        />
+
+        <Select
+          showSearch
+          allowClear
+          placeholder="Lọc theo bác sĩ"
+          value={doctorFilter}
+          onChange={(value) => setDoctorFilter(value)}
+          optionFilterProp="label"
+          options={doctors.map((doctor) => ({
+            value: doctor._id,
+            label: doctor.name,
+          }))}
+        />
+
+        <Input
+          allowClear
+          placeholder="Tìm bệnh nhân (tên, sđt, CCCD, email)"
+          value={patientKeyword}
+          onChange={(e) => setPatientKeyword(e.target.value)}
+          onPressEnter={handleApplyFilters}
+        />
+
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <Button type="primary" loading={loading} onClick={handleApplyFilters}>
+            Áp dụng lọc
+          </Button>
+          <Button onClick={handleResetFilters}>Xóa lọc</Button>
+        </div>
       </div>
+      <Button loading={loading} onClick={() => fetchAppointments()}>
+        Load dữ liệu
+      </Button>
 
       <Table<Appointment>
         rowKey="_id"
@@ -468,9 +737,11 @@ const AppointmentManagement = () => {
             </Descriptions.Item>
 
             <Descriptions.Item label="Số điện thoại">
-              {typeof selectedAppointment.patient === "object"
-                ? selectedAppointment.patient?.phone
-                : selectedAppointment.patientProfile?.phone || "---"}
+              {getPatientPhone(selectedAppointment)}
+            </Descriptions.Item>
+
+            <Descriptions.Item label="Email tài khoản đặt lịch">
+              {getBookingAccountEmail(selectedAppointment)}
             </Descriptions.Item>
 
             {/* <Descriptions.Item label="Ngày sinh">
@@ -633,6 +904,8 @@ const AppointmentManagement = () => {
             )}
           </Descriptions>
         )}
+
+        {detailLoading && <div style={{ marginTop: 12 }}>Đang tải chi tiết...</div>}
       </Modal>
 
       <Modal

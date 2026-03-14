@@ -84,6 +84,7 @@ export interface Appointment extends Omit<
         _id?: string;
         fullName?: string;
         phone?: string;
+        email?: string;
         dateOfBirth?: string;
         gender?: string;
       };
@@ -92,6 +93,7 @@ export interface Appointment extends Omit<
     _id?: string;
     fullName?: string;
     phone?: string;
+    email?: string;
   };
 
   room: {
