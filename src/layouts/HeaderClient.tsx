@@ -11,6 +11,7 @@ import { useState } from "react";
 import logo from "../assets/imgs/logoEye.png";
 import AuthModal from "../components/auth/AuthModal";
 import { useAuthHandler } from "../hooks/useAuthHandler";
+import { useAppSelector } from "../app/hook";
 
 const HeaderClient = () => {
   const [drawerVisible, setDrawerVisible] = useState(false);
@@ -20,8 +21,10 @@ const HeaderClient = () => {
   );
   const { handleLogout } = useAuthHandler();
 
-  const user = JSON.parse(localStorage.getItem("user") || "null");
-  const isLoggedIn = !!user;
+  const { user, isAuthenticated, accessToken } = useAppSelector(
+    (state) => state.auth,
+  );
+  const isLoggedIn = Boolean(user && isAuthenticated && accessToken);
 
   const menuItems: MenuProps["items"] = [];
 

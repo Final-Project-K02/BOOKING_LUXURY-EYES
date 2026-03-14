@@ -2,6 +2,7 @@ import { Avatar, Select, Switch, Table, Tag, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useState } from "react";
 import api from "../../api";
+import { useAppSelector } from "../../app/hook";
 
 type UserRole = "USER" | "DOCTOR" | "ADMIN";
 type UserStatus = "ACTIVE" | "BLOCKED";
@@ -29,6 +30,7 @@ const STATUS_MAP: Record<UserStatus, { text: string; color: string }> = {
 const UserManagement = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const currentUserId = useAppSelector((state) => state.auth.user?._id);
 
   const fetchUsers = async () => {
     try {
@@ -106,9 +108,7 @@ const UserManagement = () => {
         <Select
           value={record.role}
           style={{ width: 140 }}
-          onChange={(value: UserRole) =>
-            updateRole(record._id, value)
-          }
+          onChange={(value: UserRole) => updateRole(record._id, value)}
         >
           {(Object.keys(ROLE_MAP) as UserRole[]).map((role) => (
             <Select.Option key={role} value={role}>
@@ -134,19 +134,25 @@ const UserManagement = () => {
     {
       title: "Khoá tài khoản",
       key: "lock",
-      render: (_, record) => (
-        <Switch
-          checked={record.status === "ACTIVE"}
-          checkedChildren="Mở"
-          unCheckedChildren="Khoá"
-          onChange={(checked) =>
-            updateStatus(
-              record._id,
-              checked ? "ACTIVE" : "BLOCKED"
-            )
-          }
-        />
-      ),
+      render: (_, record) => {
+        const isCurrentUser = !!currentUserId && currentUserId === record._id;
+
+        return (
+          <Switch
+            checked={record.status === "ACTIVE"}
+            checkedChildren="Mở"
+            unCheckedChildren="Khoá"
+            onChange={(checked) => {
+              if (isCurrentUser && !checked) {
+                message.warning("Không thể tự khóa chính mình");
+                return;
+              }
+
+              updateStatus(record._id, checked ? "ACTIVE" : "BLOCKED");
+            }}
+          />
+        );
+      },
     },
   ];
 

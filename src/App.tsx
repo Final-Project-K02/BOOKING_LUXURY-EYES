@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useAppDispatch } from "./app/hook";
 import AppRoute from "./routes";
 import { setAuth } from "./app/features/authSlice";
+import { message } from "antd";
 
 function App() {
   const dispatch = useAppDispatch();
@@ -20,6 +21,14 @@ function App() {
         }),
       );
     }
+
+    if (sessionStorage.getItem("accountLockedNotice") === "1") {
+      sessionStorage.removeItem("accountLockedNotice");
+      message.warning(
+        "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.",
+      );
+    }
+
     setIsInitialized(true);
   }, [dispatch]);
 

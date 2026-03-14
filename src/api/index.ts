@@ -11,6 +11,8 @@ import { store, type RootState } from "../app/store";
 import { logout, setAuth } from "../app/features/authSlice";
 import type { User } from "../types/User";
 
+let isHandlingAccountLocked = false;
+
 const api = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
@@ -30,6 +32,29 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
+    const status = error?.response?.status;
+    const errCode = error?.response?.data?.err;
+
+    if (status === 403 && errCode === "ACCOUNT_LOCKED") {
+      if (!isHandlingAccountLocked) {
+        isHandlingAccountLocked = true;
+        sessionStorage.setItem("accountLockedNotice", "1");
+        clearStoredAuth();
+        store.dispatch(logout());
+
+        // Redirect to public page after locked-account forced logout.
+        if (window.location.pathname !== "/") {
+          window.location.replace("/");
+        }
+
+        setTimeout(() => {
+          isHandlingAccountLocked = false;
+        }, 0);
+      }
+
+      return Promise.reject(error);
+    }
+
     const originalRequest = error?.config as
       | (typeof error.config & { _retry?: boolean })
       | undefined;
@@ -39,7 +64,7 @@ api.interceptors.response.use(
       requestUrl.includes("/auth/refresh-token");
 
     if (
-      error?.response?.status === 401 &&
+      status === 401 &&
       originalRequest &&
       !shouldSkipRefresh &&
       !originalRequest._retry

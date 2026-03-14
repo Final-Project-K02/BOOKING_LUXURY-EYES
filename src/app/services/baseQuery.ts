@@ -16,6 +16,8 @@ import {
 import { logout, setAuth } from "../features/authSlice";
 import type { User } from "../../types/User";
 
+let isHandlingAccountLocked = false;
+
 export const createBaseQuery = (): BaseQueryFn<
   string | FetchArgs,
   unknown,
@@ -38,6 +40,30 @@ export const createBaseQuery = (): BaseQueryFn<
 
   return async (args, api, extraOptions) => {
     let result = await rawBaseQuery(args, api, extraOptions);
+
+    if (
+      result.error?.status === 403 &&
+      result.error?.data &&
+      typeof result.error.data === "object" &&
+      (result.error.data as { err?: unknown }).err === "ACCOUNT_LOCKED"
+    ) {
+      if (!isHandlingAccountLocked) {
+        isHandlingAccountLocked = true;
+        sessionStorage.setItem("accountLockedNotice", "1");
+        clearStoredAuth();
+        api.dispatch(logout());
+
+        if (typeof window !== "undefined" && window.location.pathname !== "/") {
+          window.location.replace("/");
+        }
+
+        setTimeout(() => {
+          isHandlingAccountLocked = false;
+        }, 0);
+      }
+
+      return result;
+    }
 
     if (result.error?.status === 401) {
       const newToken = await refreshAccessToken();
