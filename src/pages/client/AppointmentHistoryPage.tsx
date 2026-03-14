@@ -183,6 +183,8 @@ const AppointmentHistoryPage = () => {
         return "Đang chờ xử lý";
       case "REFUND_PENDING":
         return "Đang chờ hoàn tiền";
+      case "NO_REFUND":
+        return "Không hoàn tiền";
       case "REFUNDED":
         return "Đã hoàn tiền";
       case "EXPIRED":
@@ -215,6 +217,10 @@ const AppointmentHistoryPage = () => {
 
     if (paymentStatus === "REFUND_PENDING") {
       return "Đang chờ phòng khám hoàn tiền cọc";
+    }
+
+    if (paymentStatus === "NO_REFUND") {
+      return "Không hoàn tiền cọc";
     }
 
     if (paymentStatus === "PAID") {

@@ -20,6 +20,7 @@ export interface BookingPayload {
       | "PENDING"
       | "PAID"
       | "REFUND_PENDING"
+      | "NO_REFUND"
       | "FAILED"
       | "EXPIRED"
       | "REFUNDED"

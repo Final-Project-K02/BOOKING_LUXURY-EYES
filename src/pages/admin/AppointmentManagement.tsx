@@ -3,6 +3,7 @@ import {
   Descriptions,
   Input,
   Modal,
+  Radio,
   Select,
   Table,
   Tag,
@@ -40,6 +41,7 @@ const PAYMENT_STATUS_MAP: Record<string, { text: string; color: string }> = {
   PAID: { text: "Đã thanh toán", color: "green" },
   PENDING: { text: "Đang chờ thanh toán", color: "orange" },
   REFUND_PENDING: { text: "Đang chờ hoàn tiền", color: "gold" },
+  NO_REFUND: { text: "Không hoàn tiền", color: "red" },
   UNPAID: { text: "Chưa thanh toán", color: "default" },
   FAILED: { text: "Thanh toán thất bại", color: "red" },
   EXPIRED: { text: "Hết hạn thanh toán", color: "volcano" },
@@ -56,14 +58,8 @@ const buildCanceledReason = (appointment: Appointment, adminNote: string) => {
   const userReason = appointment.reason?.trim();
   const clinicReason = adminNote.trim();
 
-  if (userReason && clinicReason) {
-    return `${userReason}\n${clinicReason}`;
-  }
-
-  if (clinicReason) {
-    return `${clinicReason}`;
-  }
-
+  // Khi admin xác nhận hủy, ưu tiên lý do do admin nhập.
+  if (clinicReason) return clinicReason;
   return userReason || undefined;
 };
 
@@ -90,6 +86,17 @@ const getPatientName = (record: Appointment): string => {
   return "---";
 };
 
+type CancelOption = "REFUND" | "NO_REFUND";
+
+const requiresRefundChoice = (appointment: Appointment | null) => {
+  if (!appointment) return false;
+  return (
+    appointment.status === "CONFIRM" ||
+    appointment.status === "CHECKIN" ||
+    appointment.status === "REQUEST-CANCELED"
+  );
+};
+
 const AppointmentManagement = () => {
   const { TextArea } = Input;
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -102,6 +109,9 @@ const AppointmentManagement = () => {
   const [appointmentToCancel, setAppointmentToCancel] =
     useState<Appointment | null>(null);
   const [adminCancelNote, setAdminCancelNote] = useState<string>("");
+  const [cancelOption, setCancelOption] = useState<CancelOption | undefined>(
+    undefined,
+  );
   const [submittingCancel, setSubmittingCancel] = useState<boolean>(false);
 
   const fetchAppointments = async () => {
@@ -124,16 +134,20 @@ const AppointmentManagement = () => {
     id: string,
     status: AppointmentStatus,
     reason?: string,
+    paymentStatus?: string,
   ) => {
     try {
       await api.patch(`/appointments/${id}`, {
         status,
         ...(reason ? { reason } : {}),
+        ...(paymentStatus ? { paymentStatus } : {}),
       });
       message.success("Cập nhật trạng thái thành công");
-      fetchAppointments();
+      await fetchAppointments();
+      return true;
     } catch {
       message.error("Cập nhật thất bại");
+      return false;
     }
   };
 
@@ -142,8 +156,10 @@ const AppointmentManagement = () => {
       await api.patch(`/appointments/${id}`, { paymentStatus });
       message.success("Cập nhật trạng thái hoàn tiền thành công");
       fetchAppointments();
+      return true;
     } catch {
       message.error("Cập nhật trạng thái hoàn tiền thất bại");
+      return false;
     }
   };
 
@@ -168,6 +184,7 @@ const AppointmentManagement = () => {
     if (nextStatus === "CANCELED") {
       setAppointmentToCancel(record);
       setAdminCancelNote("");
+      setCancelOption(requiresRefundChoice(record) ? "REFUND" : undefined);
       setCancelConfirmVisible(true);
       return;
     }
@@ -191,6 +208,7 @@ const AppointmentManagement = () => {
     setCancelConfirmVisible(false);
     setAppointmentToCancel(null);
     setAdminCancelNote("");
+    setCancelOption(undefined);
   };
 
   const handleConfirmCancelStatus = async () => {
@@ -204,17 +222,46 @@ const AppointmentManagement = () => {
       return;
     }
 
-    try {
-      setSubmittingCancel(true);
-      await updateStatus(
-        appointmentToCancel._id,
-        "CANCELED",
-        buildCanceledReason(appointmentToCancel, adminCancelNote),
-      );
-      handleCloseCancelConfirm();
-    } finally {
-      setSubmittingCancel(false);
+    if (requiresRefundChoice(appointmentToCancel) && !cancelOption) {
+      message.error("Vui lòng chọn chính sách hoàn tiền");
+      return;
     }
+
+    const actionLabel =
+      cancelOption === "NO_REFUND" ? "Hủy không hoàn tiền" : "Hủy và hoàn tiền";
+
+    Modal.confirm({
+      title: "Xác nhận thao tác hủy lịch",
+      content: requiresRefundChoice(appointmentToCancel)
+        ? `Bạn có chắc muốn ${actionLabel.toLowerCase()} cho lịch hẹn này không?`
+        : "Bạn có chắc muốn hủy lịch hẹn này không?",
+      okText: "Xác nhận",
+      cancelText: "Đóng",
+      onOk: async () => {
+        try {
+          setSubmittingCancel(true);
+
+          const paymentStatus = requiresRefundChoice(appointmentToCancel)
+            ? cancelOption === "NO_REFUND"
+              ? "NO_REFUND"
+              : "REFUND_PENDING"
+            : undefined;
+
+          const updatedStatus = await updateStatus(
+            appointmentToCancel._id,
+            "CANCELED",
+            buildCanceledReason(appointmentToCancel, adminCancelNote),
+            paymentStatus,
+          );
+
+          if (!updatedStatus) return;
+
+          handleCloseCancelConfirm();
+        } finally {
+          setSubmittingCancel(false);
+        }
+      },
+    });
   };
 
   const confirmUpdatePaymentStatus = (
@@ -377,6 +424,12 @@ const AppointmentManagement = () => {
 
   return (
     <>
+      <div style={{ marginBottom: 12 }}>
+        <Button loading={loading} onClick={fetchAppointments}>
+          Load dữ liệu
+        </Button>
+      </div>
+
       <Table<Appointment>
         rowKey="_id"
         loading={loading}
@@ -622,6 +675,23 @@ const AppointmentManagement = () => {
                 onChange={(e) => setAdminCancelNote(e.target.value)}
               />
             </div>
+
+            {requiresRefundChoice(appointmentToCancel) && (
+              <div>
+                <div style={{ fontWeight: 600, marginBottom: 8 }}>
+                  Chính sách hoàn tiền
+                </div>
+                <Radio.Group
+                  value={cancelOption}
+                  onChange={(e) =>
+                    setCancelOption(e.target.value as CancelOption)
+                  }
+                >
+                  <Radio value="REFUND">Hủy và hoàn tiền</Radio>
+                  <Radio value="NO_REFUND">Hủy không hoàn tiền</Radio>
+                </Radio.Group>
+              </div>
+            )}
           </div>
         )}
       </Modal>
