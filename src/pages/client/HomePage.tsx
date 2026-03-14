@@ -511,7 +511,7 @@ const HomePage = () => {
       </div>
 
       {/* Doctors Section (existing) */}
-      <div className="container mx-auto px-4 py-24">
+      {/* <div className="container mx-auto px-4 py-24">
         <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
           {experiencedDoctors.slice(0, 3).map((doctor: any) => (
             <div
@@ -548,7 +548,7 @@ const HomePage = () => {
             </div>
           ))}
         </div>
-      </div>
+      </div> */}
 
       {/* News Section */}
       <div className="bg-gray-50 py-24">
