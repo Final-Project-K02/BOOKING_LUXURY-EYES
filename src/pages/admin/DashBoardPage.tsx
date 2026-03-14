@@ -99,6 +99,17 @@ type DoctorWithSchedule = {
   is_active?: boolean;
 };
 
+type ProgressStats = {
+  total: number;
+  completed: number;
+  confirmed: number;
+  pending: number;
+  cancelled: number;
+  completedPercent: number;
+  confirmedPercent: number;
+  pendingPercent: number;
+};
+
 const DashBoardPage: React.FC = () => {
   const nav = useNavigate();
 
@@ -111,11 +122,24 @@ const DashBoardPage: React.FC = () => {
     completedThisMonth: 0,
   });
 
+  const [progressStats, setProgressStats] = useState<ProgressStats>({
+    total: 0,
+    completed: 0,
+    confirmed: 0,
+    pending: 0,
+    cancelled: 0,
+    completedPercent: 0,
+    confirmedPercent: 0,
+    pendingPercent: 0,
+  });
+
   const [doctorsWithSchedule, setDoctorsWithSchedule] = useState<
     DoctorWithSchedule[]
   >([]);
   const [loadingDoctorsSchedule, setLoadingDoctorsSchedule] = useState(false);
   const [searchDoctor, setSearchDoctor] = useState("");
+
+  const normalizeStatus = (status?: string) => (status || "").trim().toUpperCase();
 
   const fetchDashboard = async () => {
     try {
@@ -131,18 +155,20 @@ const DashBoardPage: React.FC = () => {
 
       const today = dayjs().format("YYYY-MM-DD");
 
+      const completedThisMonthCount = appointmentsData.filter((a) => {
+        const status = normalizeStatus(a.status);
+        return (
+          status === "COMPLETED" && dayjs(a.dateTime).isSame(dayjs(), "month")
+        );
+      }).length;
+
       setStats({
         todayAppointments: appointmentsData.filter(
           (a) => dayjs(a.dateTime).format("YYYY-MM-DD") === today
         ).length,
         newPatients: patientsData.length,
         doctors: doctorsData.length,
-        completedThisMonth: appointmentsData.filter(
-          (a) =>
-            a.status === "Completed" ||
-            (a.status === "COMPLETED" &&
-              dayjs(a.dateTime).isSame(dayjs(), "month"))
-        ).length,
+        completedThisMonth: completedThisMonthCount,
       });
 
       setAppointments(
@@ -159,7 +185,9 @@ const DashBoardPage: React.FC = () => {
       setUpcoming(
         appointmentsData
           .filter((a) => dayjs(a.dateTime).isAfter(dayjs()))
-          .sort((a, b) => dayjs(a.dateTime).valueOf() - dayjs(b.dateTime).valueOf())
+          .sort(
+            (a, b) => dayjs(a.dateTime).valueOf() - dayjs(b.dateTime).valueOf()
+          )
           .slice(0, 5)
           .map((a) => ({
             name: a.patient?.fullName || "—",
@@ -168,6 +196,35 @@ const DashBoardPage: React.FC = () => {
             doctor: a.doctor?.name || "—",
           }))
       );
+
+      // Tính progress từ dữ liệu thật
+      const total = appointmentsData.length;
+      const completed = appointmentsData.filter(
+        (a) => normalizeStatus(a.status) === "COMPLETED"
+      ).length;
+      const confirmed = appointmentsData.filter(
+        (a) => normalizeStatus(a.status) === "CONFIRMED"
+      ).length;
+      const pending = appointmentsData.filter(
+        (a) => normalizeStatus(a.status) === "PENDING"
+      ).length;
+      const cancelled = appointmentsData.filter(
+        (a) => normalizeStatus(a.status) === "CANCELLED"
+      ).length;
+
+      const percent = (value: number, totalValue: number) =>
+        totalValue > 0 ? Math.round((value / totalValue) * 100) : 0;
+
+      setProgressStats({
+        total,
+        completed,
+        confirmed,
+        pending,
+        cancelled,
+        completedPercent: percent(completed, total),
+        confirmedPercent: percent(confirmed, total),
+        pendingPercent: percent(pending, total),
+      });
 
       // fetch “doctors with schedule”
       await fetchDoctorsWithSchedule(doctorsData);
@@ -178,7 +235,6 @@ const DashBoardPage: React.FC = () => {
   };
 
   const fetchSchedulesByDoctor = async (doctorId: string) => {
-    // Dự án của bạn trước đây có query schedules?doctorId=...
     const res = await api.get("/schedules", { params: { doctorId } });
     return (res.data?.data ?? []) as ScheduleApi[];
   };
@@ -187,10 +243,8 @@ const DashBoardPage: React.FC = () => {
     try {
       setLoadingDoctorsSchedule(true);
 
-      // chỉ lấy doctor active để hiển thị nổi bật
       const activeDoctors = (doctorsData || []).filter((d) => d.is_active !== false);
 
-      // limit để không call quá nhiều request
       const LIMIT = 10;
       const pick = activeDoctors.slice(0, LIMIT);
 
@@ -199,7 +253,6 @@ const DashBoardPage: React.FC = () => {
           try {
             const schedules = await fetchSchedulesByDoctor(doc._id);
 
-            // gom các slot tương lai
             const futureSlots: Array<{ time: string; date: string }> = [];
 
             schedules.forEach((s) => {
@@ -246,7 +299,6 @@ const DashBoardPage: React.FC = () => {
         })
       );
 
-      // chỉ hiển thị bác sĩ có slot sắp tới
       const filtered = results
         .filter((d) => (d.upcomingCount || 0) > 0)
         .sort((a, b) => (b.upcomingCount || 0) - (a.upcomingCount || 0));
@@ -263,7 +315,6 @@ const DashBoardPage: React.FC = () => {
   }, []);
 
   const goToBooking = (doctorId: string) => {
-    // Nếu route đặt lịch của bạn khác, đổi ở đây
     nav(`/dat-lich-kham?doctorId=${doctorId}`);
   };
 
@@ -292,6 +343,7 @@ const DashBoardPage: React.FC = () => {
           CONFIRMED: { color: "green", text: "Đã xác nhận" },
           COMPLETED: { color: "blue", text: "Hoàn thành" },
           CANCELLED: { color: "red", text: "Đã huỷ" },
+          PENDING: { color: "orange", text: "Chờ xác nhận" },
         };
 
         const config = map[status] ?? {
@@ -361,7 +413,6 @@ const DashBoardPage: React.FC = () => {
         </Col>
       </Row>
 
-      {/* Doctors with schedule - nổi bật */}
       <Card
         style={{ marginBottom: 16 }}
         title="Bác sĩ có lịch khám"
@@ -438,10 +489,31 @@ const DashBoardPage: React.FC = () => {
             <Table columns={columns} dataSource={appointments} pagination={false} />
           </Card>
 
-          <Card title="Tỷ lệ hoàn thành (demo)">
-            <Progress percent={90} />
-            <Progress percent={85} />
-            <Progress percent={78} />
+          <Card title="Tỷ lệ xử lý lịch hẹn">
+            <div style={{ marginBottom: 16, color: "#666" }}>
+              Tổng số lịch hẹn: <strong>{progressStats.total}</strong>
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ marginBottom: 6 }}>
+                Hoàn thành ({progressStats.completed}/{progressStats.total})
+              </div>
+              <Progress percent={progressStats.completedPercent} status="active" />
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ marginBottom: 6 }}>
+                Đã xác nhận ({progressStats.confirmed}/{progressStats.total})
+              </div>
+              <Progress percent={progressStats.confirmedPercent} />
+            </div>
+
+            <div>
+              <div style={{ marginBottom: 6 }}>
+                Chờ xác nhận ({progressStats.pending}/{progressStats.total})
+              </div>
+              <Progress percent={progressStats.pendingPercent} />
+            </div>
           </Card>
         </Col>
 
