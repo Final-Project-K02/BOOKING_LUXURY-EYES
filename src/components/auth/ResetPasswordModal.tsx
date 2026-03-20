@@ -59,7 +59,7 @@ const ResetPasswordModal = ({
       okText="Xác nhận"
       cancelText="Hủy"
       width={500}
-      destroyOnClose
+      destroyOnHidden
     >
       <Form
         form={form}

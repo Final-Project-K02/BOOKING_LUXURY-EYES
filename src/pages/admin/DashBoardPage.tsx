@@ -139,7 +139,8 @@ const DashBoardPage: React.FC = () => {
   const [loadingDoctorsSchedule, setLoadingDoctorsSchedule] = useState(false);
   const [searchDoctor, setSearchDoctor] = useState("");
 
-  const normalizeStatus = (status?: string) => (status || "").trim().toUpperCase();
+  const normalizeStatus = (status?: string) =>
+    (status || "").trim().toUpperCase();
 
   const fetchDashboard = async () => {
     try {
@@ -164,7 +165,7 @@ const DashBoardPage: React.FC = () => {
 
       setStats({
         todayAppointments: appointmentsData.filter(
-          (a) => dayjs(a.dateTime).format("YYYY-MM-DD") === today
+          (a) => dayjs(a.dateTime).format("YYYY-MM-DD") === today,
         ).length,
         newPatients: patientsData.length,
         doctors: doctorsData.length,
@@ -179,14 +180,14 @@ const DashBoardPage: React.FC = () => {
           time: `${a.time} - ${dayjs(a.dateTime).format("DD/MM/YYYY")}`,
           department: a.doctor?.specialty || "—",
           status: a.status,
-        }))
+        })),
       );
 
       setUpcoming(
         appointmentsData
           .filter((a) => dayjs(a.dateTime).isAfter(dayjs()))
           .sort(
-            (a, b) => dayjs(a.dateTime).valueOf() - dayjs(b.dateTime).valueOf()
+            (a, b) => dayjs(a.dateTime).valueOf() - dayjs(b.dateTime).valueOf(),
           )
           .slice(0, 5)
           .map((a) => ({
@@ -194,22 +195,22 @@ const DashBoardPage: React.FC = () => {
             time: a.time,
             date: dayjs(a.dateTime).format("DD/MM/YYYY"),
             doctor: a.doctor?.name || "—",
-          }))
+          })),
       );
 
       // Tính progress từ dữ liệu thật
       const total = appointmentsData.length;
       const completed = appointmentsData.filter(
-        (a) => normalizeStatus(a.status) === "COMPLETED"
+        (a) => normalizeStatus(a.status) === "COMPLETED",
       ).length;
       const confirmed = appointmentsData.filter(
-        (a) => normalizeStatus(a.status) === "CONFIRMED"
+        (a) => normalizeStatus(a.status) === "CONFIRMED",
       ).length;
       const pending = appointmentsData.filter(
-        (a) => normalizeStatus(a.status) === "PENDING"
+        (a) => normalizeStatus(a.status) === "PENDING",
       ).length;
       const cancelled = appointmentsData.filter(
-        (a) => normalizeStatus(a.status) === "CANCELLED"
+        (a) => normalizeStatus(a.status) === "CANCELLED",
       ).length;
 
       const percent = (value: number, totalValue: number) =>
@@ -243,7 +244,9 @@ const DashBoardPage: React.FC = () => {
     try {
       setLoadingDoctorsSchedule(true);
 
-      const activeDoctors = (doctorsData || []).filter((d) => d.is_active !== false);
+      const activeDoctors = (doctorsData || []).filter(
+        (d) => d.is_active !== false,
+      );
 
       const LIMIT = 10;
       const pick = activeDoctors.slice(0, LIMIT);
@@ -265,7 +268,7 @@ const DashBoardPage: React.FC = () => {
             });
 
             futureSlots.sort(
-              (a, b) => dayjs(a.date).valueOf() - dayjs(b.date).valueOf()
+              (a, b) => dayjs(a.date).valueOf() - dayjs(b.date).valueOf(),
             );
 
             const next = futureSlots[0];
@@ -296,7 +299,7 @@ const DashBoardPage: React.FC = () => {
               nextSlotText: undefined,
             } as DoctorWithSchedule;
           }
-        })
+        }),
       );
 
       const filtered = results
@@ -358,7 +361,8 @@ const DashBoardPage: React.FC = () => {
 
   const dateCellRender = (value: Dayjs) => {
     const count = appointments.filter(
-      (a) => dayjs(a.time.split(" - ")[1], "DD/MM/YYYY").date() === value.date()
+      (a) =>
+        dayjs(a.time.split(" - ")[1], "DD/MM/YYYY").date() === value.date(),
     ).length;
 
     return count ? <Badge status="success" text={`${count} lịch hẹn`} /> : null;
@@ -368,7 +372,7 @@ const DashBoardPage: React.FC = () => {
     const q = searchDoctor.trim().toLowerCase();
     if (!q) return doctorsWithSchedule;
     return doctorsWithSchedule.filter((d) =>
-      (d.name || "").toLowerCase().includes(q)
+      (d.name || "").toLowerCase().includes(q),
     );
   }, [doctorsWithSchedule, searchDoctor]);
 
@@ -397,7 +401,11 @@ const DashBoardPage: React.FC = () => {
 
         <Col xs={24} md={12} lg={6}>
           <Card>
-            <Statistic title="Bác sĩ" value={stats.doctors} prefix={<TeamOutlined />} />
+            <Statistic
+              title="Bác sĩ"
+              value={stats.doctors}
+              prefix={<TeamOutlined />}
+            />
           </Card>
         </Col>
 
@@ -413,7 +421,7 @@ const DashBoardPage: React.FC = () => {
         </Col>
       </Row>
 
-      <Card
+      {/* <Card
         style={{ marginBottom: 16 }}
         title="Bác sĩ có lịch khám"
         extra={
@@ -481,12 +489,16 @@ const DashBoardPage: React.FC = () => {
             ))}
           </Row>
         )}
-      </Card>
+      </Card> */}
 
       <Row gutter={16}>
         <Col xs={24} lg={16}>
           <Card title="Lịch hẹn gần đây" style={{ marginBottom: 16 }}>
-            <Table columns={columns} dataSource={appointments} pagination={false} />
+            <Table
+              columns={columns}
+              dataSource={appointments}
+              pagination={false}
+            />
           </Card>
 
           <Card title="Tỷ lệ xử lý lịch hẹn">
@@ -498,7 +510,10 @@ const DashBoardPage: React.FC = () => {
               <div style={{ marginBottom: 6 }}>
                 Hoàn thành ({progressStats.completed}/{progressStats.total})
               </div>
-              <Progress percent={progressStats.completedPercent} status="active" />
+              <Progress
+                percent={progressStats.completedPercent}
+                status="active"
+              />
             </div>
 
             <div style={{ marginBottom: 14 }}>

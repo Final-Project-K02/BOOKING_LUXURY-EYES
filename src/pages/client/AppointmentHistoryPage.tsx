@@ -42,13 +42,8 @@ const CANCEL_REASON_OPTIONS = {
   rescheduled: "Muốn đổi lịch khác",
 } as const;
 
-export type AppointmentStatus =
-  | "PENDING"
-  | "CONFIRM"
-  | "CHECKIN"
-  | "DONE"
-  | "CANCELED"
-  | "REQUEST-CANCELED";
+export type { AppointmentStatus } from "../../types/Booking";
+import type { AppointmentStatus } from "../../types/Booking";
 
 const AppointmentHistoryPage = () => {
   const [activeTab, setActiveTab] = useState<string>("all");

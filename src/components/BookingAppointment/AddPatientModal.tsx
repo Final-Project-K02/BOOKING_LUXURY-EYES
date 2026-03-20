@@ -7,7 +7,10 @@ import {
 import { DatePicker, Form, Input, Modal, Radio } from "antd";
 import React, { useEffect } from "react";
 import dayjs from "dayjs";
+import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import type { CreatePatientInput } from "../../types/PatientProfile";
+
+dayjs.extend(isSameOrBefore);
 
 export interface PatientInput {
   fullName: string;

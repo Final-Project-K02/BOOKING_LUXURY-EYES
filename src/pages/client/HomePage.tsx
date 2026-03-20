@@ -334,7 +334,7 @@ const HomePage = () => {
       </div>
 
       {/* ===== NEW SECTION: Doctors with schedule ===== */}
-      <div className="container mx-auto px-4 py-24">
+      {/* <div className="container mx-auto px-4 py-24">
         <div className="text-center mb-10 space-y-3">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900">
             Đội ngũ bác sĩ nổi bật
@@ -344,7 +344,7 @@ const HomePage = () => {
           </p>
         </div>
 
-        {/* <div className="max-w-5xl mx-auto mb-6">
+        <div className="max-w-5xl mx-auto mb-6">
           <Input
             allowClear
             placeholder="Tìm bác sĩ..."
@@ -353,7 +353,7 @@ const HomePage = () => {
             onChange={(e) => setSearchDoctor(e.target.value)}
             className="h-12"
           />
-        </div> */}
+        </div>
 
         {loadingDoctorsSchedule ? (
           <div className="text-center text-gray-500">Đang tải...</div>
@@ -408,7 +408,7 @@ const HomePage = () => {
             ))}
           </div>
         )}
-      </div>
+      </div> */}
 
       {/* Features Grid */}
       <div className="container mx-auto px-4 py-24">
@@ -511,7 +511,7 @@ const HomePage = () => {
       </div>
 
       {/* Doctors Section (existing) */}
-      {/* <div className="container mx-auto px-4 py-24">
+      <div className="container mx-auto px-4 py-24">
         <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
           {experiencedDoctors.slice(0, 3).map((doctor: any) => (
             <div
@@ -548,7 +548,7 @@ const HomePage = () => {
             </div>
           ))}
         </div>
-      </div> */}
+      </div>
 
       {/* News Section */}
       <div className="bg-gray-50 py-24">

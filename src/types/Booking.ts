@@ -1,4 +1,10 @@
-import type { AppointmentStatus } from "../pages/client/AppointmentHistoryPage";
+export type AppointmentStatus =
+  | "PENDING"
+  | "CONFIRM"
+  | "CHECKIN"
+  | "DONE"
+  | "CANCELED"
+  | "REQUEST-CANCELED";
 
 export interface BookingPayload {
   userId: string;
