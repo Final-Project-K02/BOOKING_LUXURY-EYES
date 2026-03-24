@@ -10,7 +10,7 @@ export default function AdminRoute({ children }: { children: ReactNode }) {
   const userStr = localStorage.getItem("user");
 
   if (!token || !userStr) {
-    return <Navigate to="/auth/login" replace />;
+    return <Navigate to="/" replace />;
   }
 
   const user: User = JSON.parse(userStr);
