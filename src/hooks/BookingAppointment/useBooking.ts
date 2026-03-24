@@ -3,18 +3,22 @@ import { message } from "antd";
 import dayjs from "dayjs";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAppSelector } from "../app/hook";
+import { useAppSelector } from "../../app/hook";
 import {
   useCreateBookingMutation,
   useCreateVnpayLinkMutation,
   useGetAppointmentsQuery,
   useGetBookingByScheduleIdQuery,
-} from "../app/services/appointmentApi";
-import { useGetScheduleDoctorIdQuery } from "../app/services/scheduleApi";
-import type { AppointmentStatus } from "../types/Booking";
-import { BLOCK_STATUSES } from "../types/Booking";
-import type { Doctor } from "../types/Doctor";
-import type { SelectedSchedule, TimeSlot, TimeSlotUI } from "../types/Schedule";
+} from "../../app/services/appointmentApi";
+import { useGetScheduleDoctorIdQuery } from "../../app/services/scheduleApi";
+import type { AppointmentStatus } from "../../types/Booking";
+import { BLOCK_STATUSES } from "../../types/Booking";
+import type { Doctor } from "../../types/Doctor";
+import type {
+  SelectedSchedule,
+  TimeSlot,
+  TimeSlotUI,
+} from "../../types/Schedule";
 
 /**
  * Quản lý toàn bộ flow đặt lịch: chọn bác sĩ, chọn slot, xác nhận & thanh toán.

@@ -2,19 +2,19 @@ import { message } from "antd";
 import dayjs from "dayjs";
 import { useEffect, useMemo, useState } from "react";
 import { skipToken } from "@reduxjs/toolkit/query";
-import { useAppSelector } from "../app/hook";
+import { useAppSelector } from "../../app/hook";
 import {
   useCancelAppointmentConfirmMutation,
   useCancelAppointmentMutation,
   useCreateVnpayLinkMutation,
   useLazyGetAppointmentDetailQuery,
   useGetAppointmentsQuery,
-} from "../app/services/appointmentApi";
-import type { Appointment, AppointmentStatus } from "../types/Booking";
+} from "../../app/services/appointmentApi";
+import type { Appointment, AppointmentStatus } from "../../types/Booking";
 import {
   CANCEL_REASON_OPTIONS,
   getRemainingSeconds,
-} from "../components/appointment-history/appointmentHelpers";
+} from "../../components/AppointmentHistory/appointmentHelpers";
 
 export const useAppointmentHistory = () => {
   const [activeTab, setActiveTab] = useState<string>("all");

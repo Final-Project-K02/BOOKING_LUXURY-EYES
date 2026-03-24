@@ -1,7 +1,7 @@
 import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
 import { useEffect, useState } from "react";
-import { useGetDoctorsQuery } from "../app/services/doctorApi";
+import { useGetDoctorsQuery } from "../../app/services/doctorApi";
 
 /**
  * Quản lý search/filter bác sĩ: input, debounce, date range, pagination.

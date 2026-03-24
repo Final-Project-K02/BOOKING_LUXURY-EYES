@@ -1,10 +1,10 @@
 import { CalendarOutlined } from "@ant-design/icons";
 import { Button, Card, Tabs } from "antd";
 import { Link } from "react-router-dom";
-import AppointmentCard from "../../components/appointment-history/AppointmentCard";
-import AppointmentDetailModal from "../../components/appointment-history/AppointmentDetailModal";
-import CancelAppointmentModal from "../../components/appointment-history/CancelAppointmentModal";
-import { useAppointmentHistory } from "../../hooks/useAppointmentHistory";
+import AppointmentCard from "../../components/AppointmentHistory/AppointmentCard";
+import AppointmentDetailModal from "../../components/AppointmentHistory/AppointmentDetailModal";
+import CancelAppointmentModal from "../../components/AppointmentHistory/CancelAppointmentModal";
+import { useAppointmentHistory } from "../../hooks/AppointmentHistory/useAppointmentHistory";
 
 export type { AppointmentStatus } from "../../types/Booking";
 

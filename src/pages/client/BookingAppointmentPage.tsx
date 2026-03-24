@@ -7,9 +7,9 @@ import BookingFilterSidebar from "../../components/BookingAppointment/BookingFil
 import BookingSummary from "../../components/BookingAppointment/BookingSummary";
 import DoctorList from "../../components/BookingAppointment/DoctorList";
 import DoctorScheduleView from "../../components/BookingAppointment/DoctorScheduleView";
-import { useBooking } from "../../hooks/useBooking";
-import { useDoctorSearch } from "../../hooks/useDoctorSearch";
-import { usePatientProfile } from "../../hooks/usePatientProfile";
+import { useBooking } from "../../hooks/BookingAppointment/useBooking";
+import { useDoctorSearch } from "../../hooks/BookingAppointment/useDoctorSearch";
+import { usePatientProfile } from "../../hooks/BookingAppointment/usePatientProfile";
 
 const BookingAppointmentPage = () => {
   const doctorSearch = useDoctorSearch();

@@ -6,11 +6,11 @@ import {
   useDeletePatientProfileMutation,
   useGetPatientProfileQuery,
   useUpdatePatientProfileMutation,
-} from "../app/services/patientProfile";
+} from "../../app/services/patientProfile";
 import type {
   CreatePatientInput,
   PatientResponse,
-} from "../types/PatientProfile";
+} from "../../types/PatientProfile";
 
 /**
  * Quản lý hồ sơ bệnh nhân: chọn, thêm, sửa, xóa.
