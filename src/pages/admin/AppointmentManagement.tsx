@@ -1,122 +1,57 @@
-import { useEffect } from "react";
 import AppointmentFilterBar from "../../components/AppointmentManagement/AppointmentFilterBar";
 import AppointmentTable from "../../components/AppointmentManagement/AppointmentTable";
 import AppointmentDetailModal from "../../components/AppointmentManagement/AppointmentDetailModal";
 import AppointmentCancelModal from "../../components/AppointmentManagement/AppointmentCancelModal";
-import { useAppointmentList } from "../../hooks/AppointmentManagement/useAppointmentList";
-import { useAppointmentFilters } from "../../hooks/AppointmentManagement/useAppointmentFilters";
-import { useAppointmentActions } from "../../hooks/AppointmentManagement/useAppointmentActions";
+import { useAppointmentManagement } from "../../hooks/AppointmentManagement/useAppointmentManagement";
 
 const AppointmentManagement = () => {
-  const {
-    appointments,
-    doctors,
-    loading,
-    detailLoading,
-    setDetailLoading,
-    fetchAppointments,
-    fetchDoctors,
-    fetchAppointmentDetail,
-  } = useAppointmentList();
-
-  const {
-    searchParams,
-    dateRange,
-    setDateRange,
-    statusFilters,
-    setStatusFilters,
-    paymentStatusFilters,
-    setPaymentStatusFilters,
-    doctorFilter,
-    setDoctorFilter,
-    patientKeyword,
-    setPatientKeyword,
-    buildFilterParams,
-    getFiltersFromSearchParams,
-    applyFiltersToState,
-    handleApplyFilters,
-    handleResetFilters,
-  } = useAppointmentFilters();
-
-  const {
-    selectedAppointment,
-    detailModalVisible,
-    cancelConfirmVisible,
-    appointmentToCancel,
-    adminCancelNote,
-    setAdminCancelNote,
-    cancelOption,
-    setCancelOption,
-    submittingCancel,
-    handleViewDetail,
-    handleCloseDetail,
-    confirmUpdateStatus,
-    handleCloseCancelConfirm,
-    handleConfirmCancelStatus,
-    confirmUpdatePaymentStatus,
-  } = useAppointmentActions({
-    fetchAppointments: () => fetchAppointments(buildFilterParams()),
-    fetchAppointmentDetail,
-    setDetailLoading,
-  });
-
-  useEffect(() => {
-    fetchDoctors();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    const filtersFromUrl = getFiltersFromSearchParams();
-    applyFiltersToState(filtersFromUrl);
-    fetchAppointments(buildFilterParams(filtersFromUrl));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  const am = useAppointmentManagement();
 
   return (
     <>
       <AppointmentFilterBar
-        dateRange={dateRange}
-        statusFilters={statusFilters}
-        paymentStatusFilters={paymentStatusFilters}
-        doctorFilter={doctorFilter}
-        patientKeyword={patientKeyword}
-        doctors={doctors}
-        loading={loading}
-        onDateRangeChange={setDateRange}
-        onStatusFiltersChange={setStatusFilters}
-        onPaymentStatusFiltersChange={setPaymentStatusFilters}
-        onDoctorFilterChange={setDoctorFilter}
-        onPatientKeywordChange={setPatientKeyword}
-        onApplyFilters={handleApplyFilters}
-        onResetFilters={handleResetFilters}
+        dateRange={am.dateRange}
+        statusFilters={am.statusFilters}
+        paymentStatusFilters={am.paymentStatusFilters}
+        doctorFilter={am.doctorFilter}
+        patientKeyword={am.patientKeyword}
+        doctors={am.doctors}
+        loading={am.loading}
+        onDateRangeChange={am.setDateRange}
+        onStatusFiltersChange={am.setStatusFilters}
+        onPaymentStatusFiltersChange={am.setPaymentStatusFilters}
+        onDoctorFilterChange={am.setDoctorFilter}
+        onPatientKeywordChange={am.setPatientKeyword}
+        onApplyFilters={am.handleApplyFilters}
+        onResetFilters={am.handleResetFilters}
       />
 
       <AppointmentTable
-        appointments={appointments}
-        loading={loading}
-        onViewDetail={handleViewDetail}
-        onUpdateStatus={confirmUpdateStatus}
-        onUpdatePaymentStatus={confirmUpdatePaymentStatus}
-        onReload={() => fetchAppointments(buildFilterParams())}
+        appointments={am.appointments}
+        loading={am.loading}
+        onViewDetail={am.handleViewDetail}
+        onUpdateStatus={am.confirmUpdateStatus}
+        onUpdatePaymentStatus={am.confirmUpdatePaymentStatus}
+        onReload={am.reload}
       />
 
       <AppointmentDetailModal
-        open={detailModalVisible}
-        appointment={selectedAppointment}
-        detailLoading={detailLoading}
-        onClose={handleCloseDetail}
+        open={am.detailModalVisible}
+        appointment={am.selectedAppointment}
+        detailLoading={am.detailLoading}
+        onClose={am.handleCloseDetail}
       />
 
       <AppointmentCancelModal
-        open={cancelConfirmVisible}
-        appointment={appointmentToCancel}
-        adminNote={adminCancelNote}
-        cancelOption={cancelOption}
-        confirmLoading={submittingCancel}
-        onAdminNoteChange={setAdminCancelNote}
-        onCancelOptionChange={setCancelOption}
-        onConfirm={handleConfirmCancelStatus}
-        onClose={handleCloseCancelConfirm}
+        open={am.cancelConfirmVisible}
+        appointment={am.appointmentToCancel}
+        adminNote={am.adminCancelNote}
+        cancelOption={am.cancelOption}
+        confirmLoading={am.submittingCancel}
+        onAdminNoteChange={am.setAdminCancelNote}
+        onCancelOptionChange={am.setCancelOption}
+        onConfirm={am.handleConfirmCancelStatus}
+        onClose={am.handleCloseCancelConfirm}
       />
     </>
   );
