@@ -2,12 +2,12 @@ import { Button, Card, Popconfirm, Select, Space, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { CalendarOutlined, PlusOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
-import type { Doctor } from "../../types/Doctor";
+import type { Doctor } from "../../../types/Doctor";
 import type {
   Schedule,
   TimeSlot,
-} from "../../hooks/ScheduleManagement/useScheduleManagement";
-import { isBookedLikeStatus } from "../../hooks/ScheduleManagement/useScheduleManagement";
+} from "../../../hooks/ScheduleManagement/useScheduleManagement";
+import { isBookedLikeStatus } from "../../../hooks/ScheduleManagement/useScheduleManagement";
 
 // Group time slots by date for display in the schedule detail column
 const groupSlotsByDate = (slots: TimeSlot[]) => {

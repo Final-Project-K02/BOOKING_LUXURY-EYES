@@ -1,6 +1,6 @@
 import { UserOutlined } from "@ant-design/icons";
 import { Avatar, Button, Card } from "antd";
-import type { Doctor } from "../../types/Doctor";
+import type { Doctor } from "../../../types/Doctor";
 
 interface DoctorListProps {
   doctors: Doctor[];

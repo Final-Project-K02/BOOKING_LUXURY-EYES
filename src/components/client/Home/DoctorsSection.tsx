@@ -1,4 +1,4 @@
-import type { Doctor } from "../../types/Doctor";
+import type { Doctor } from "../../../types/Doctor";
 
 type DoctorsSectionProps = {
   doctors: Doctor[];

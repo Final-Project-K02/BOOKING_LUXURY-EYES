@@ -1,16 +1,16 @@
 import { Button, Descriptions, Modal, Tag } from "antd";
-import type { Appointment } from "../../types/Booking";
+import type { Appointment } from "../../../types/Booking";
 import {
   PAYMENT_STATUS_MAP,
   STATUS_MAP,
-} from "../../constants/AppointmentManagement/appointmentAdminConstants";
+} from "../../../constants/AppointmentManagement/appointmentAdminConstants";
 import {
   getCancelByText,
   getBookingAccountEmail,
   getPatientName,
   getPatientPhone,
   isPaid,
-} from "../../utils/AppointmentManagement/appointmentAdminHelpers";
+} from "../../../utils/AppointmentManagement/appointmentAdminHelpers";
 
 interface AppointmentDetailModalProps {
   open: boolean;

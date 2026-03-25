@@ -1,7 +1,7 @@
-import AppointmentFilterBar from "../../components/AppointmentManagement/AppointmentFilterBar";
-import AppointmentTable from "../../components/AppointmentManagement/AppointmentTable";
-import AppointmentDetailModal from "../../components/AppointmentManagement/AppointmentDetailModal";
-import AppointmentCancelModal from "../../components/AppointmentManagement/AppointmentCancelModal";
+import AppointmentFilterBar from "../../components/admin/AppointmentManagement/AppointmentFilterBar";
+import AppointmentTable from "../../components/admin/AppointmentManagement/AppointmentTable";
+import AppointmentDetailModal from "../../components/admin/AppointmentManagement/AppointmentDetailModal";
+import AppointmentCancelModal from "../../components/admin/AppointmentManagement/AppointmentCancelModal";
 import { useAppointmentManagement } from "../../hooks/AppointmentManagement/useAppointmentManagement";
 
 const AppointmentManagement = () => {

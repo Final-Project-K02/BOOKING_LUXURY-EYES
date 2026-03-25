@@ -1,6 +1,6 @@
 import { useScheduleManagement } from "../../hooks/ScheduleManagement/useScheduleManagement";
-import ScheduleTable from "../../components/ScheduleManagement/ScheduleTable";
-import ScheduleFormModal from "../../components/ScheduleManagement/ScheduleFormModal";
+import ScheduleTable from "../../components/admin/ScheduleManagement/ScheduleTable";
+import ScheduleFormModal from "../../components/admin/ScheduleManagement/ScheduleFormModal";
 
 const ScheduleManagement = () => {
   const {

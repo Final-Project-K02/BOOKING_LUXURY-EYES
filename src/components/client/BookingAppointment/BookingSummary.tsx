@@ -5,8 +5,8 @@ import {
   UserOutlined,
 } from "@ant-design/icons";
 import { Avatar, Button, Input } from "antd";
-import type { Doctor } from "../../types/Doctor";
-import type { SelectedSchedule } from "../../types/Schedule";
+import type { Doctor } from "../../../types/Doctor";
+import type { SelectedSchedule } from "../../../types/Schedule";
 
 const { TextArea } = Input;
 

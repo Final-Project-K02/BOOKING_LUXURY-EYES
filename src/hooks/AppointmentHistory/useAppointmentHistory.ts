@@ -14,7 +14,7 @@ import type { Appointment, AppointmentStatus } from "../../types/Booking";
 import {
   CANCEL_REASON_OPTIONS,
   getRemainingSeconds,
-} from "../../components/AppointmentHistory/appointmentHelpers";
+} from "../../components/client/AppointmentHistory/appointmentHelpers";
 
 export const useAppointmentHistory = () => {
   const [activeTab, setActiveTab] = useState<string>("all");

@@ -5,7 +5,7 @@ import {
   SyncOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
-import type { Appointment, AppointmentStatus } from "../../types/Booking";
+import type { Appointment, AppointmentStatus } from "../../../types/Booking";
 
 export const CANCEL_REASON_OPTIONS = {
   busy: "Bận việc đột xuất",

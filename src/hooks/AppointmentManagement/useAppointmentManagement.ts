@@ -7,18 +7,28 @@ import type { Dayjs } from "dayjs";
 import api from "../../api";
 import type { Appointment, AppointmentStatus } from "../../types/Booking";
 import type { Doctor } from "../../types/Doctor";
-import type { CancelOption, FilterState } from "../../types/AppointmentManagement";
 import {
   STATUS_MAP,
   PAYMENT_STATUS_MAP,
   FILTERABLE_STATUSES,
 } from "../../constants/AppointmentManagement/appointmentAdminConstants";
 import {
+  type CancelOption,
   isPaid,
   requiresRefundChoice,
   buildCanceledReason,
   toArrayQueryValue,
 } from "../../utils/AppointmentManagement/appointmentAdminHelpers";
+
+// ===== TYPES =====
+
+type FilterState = {
+  dateRange: [Dayjs | null, Dayjs | null] | null;
+  statusFilters: AppointmentStatus[];
+  paymentStatusFilters: string[];
+  doctorFilter: string | undefined;
+  patientKeyword: string;
+};
 
 // ===== HOOK =====
 
@@ -34,21 +44,31 @@ export const useAppointmentManagement = () => {
   const [detailLoading, setDetailLoading] = useState(false);
 
   // Filter
-  const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
+  const [dateRange, setDateRange] = useState<
+    [Dayjs | null, Dayjs | null] | null
+  >(null);
   const [statusFilters, setStatusFilters] = useState<AppointmentStatus[]>([]);
-  const [paymentStatusFilters, setPaymentStatusFilters] = useState<string[]>([]);
-  const [doctorFilter, setDoctorFilter] = useState<string | undefined>(undefined);
+  const [paymentStatusFilters, setPaymentStatusFilters] = useState<string[]>(
+    [],
+  );
+  const [doctorFilter, setDoctorFilter] = useState<string | undefined>(
+    undefined,
+  );
   const [patientKeyword, setPatientKeyword] = useState("");
 
   // Detail modal
-  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [selectedAppointment, setSelectedAppointment] =
+    useState<Appointment | null>(null);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
 
   // Cancel modal
   const [cancelConfirmVisible, setCancelConfirmVisible] = useState(false);
-  const [appointmentToCancel, setAppointmentToCancel] = useState<Appointment | null>(null);
+  const [appointmentToCancel, setAppointmentToCancel] =
+    useState<Appointment | null>(null);
   const [adminCancelNote, setAdminCancelNote] = useState("");
-  const [cancelOption, setCancelOption] = useState<CancelOption | undefined>(undefined);
+  const [cancelOption, setCancelOption] = useState<CancelOption | undefined>(
+    undefined,
+  );
   const [submittingCancel, setSubmittingCancel] = useState(false);
 
   // ===== FETCH =====
@@ -56,7 +76,9 @@ export const useAppointmentManagement = () => {
   const fetchAppointments = async (params?: Record<string, string>) => {
     try {
       setLoading(true);
-      const res = await api.get<{ data: Appointment[] }>("/appointments", { params });
+      const res = await api.get<{ data: Appointment[] }>("/appointments", {
+        params,
+      });
       setAppointments(res.data.data ?? []);
     } catch {
       message.error("Không thể tải lịch hẹn");
@@ -74,7 +96,9 @@ export const useAppointmentManagement = () => {
     }
   };
 
-  const fetchAppointmentDetail = async (id: string): Promise<Appointment | null> => {
+  const fetchAppointmentDetail = async (
+    id: string,
+  ): Promise<Appointment | null> => {
     try {
       setDetailLoading(true);
       const res = await api.get<{ data: Appointment }>(`/appointments/${id}`);
@@ -89,7 +113,9 @@ export const useAppointmentManagement = () => {
 
   // ===== FILTER HELPERS =====
 
-  const buildFilterParams = (overrides?: FilterState): Record<string, string> => {
+  const buildFilterParams = (
+    overrides?: FilterState,
+  ): Record<string, string> => {
     const source = overrides ?? {
       dateRange,
       statusFilters,
@@ -99,12 +125,17 @@ export const useAppointmentManagement = () => {
     };
     const params: Record<string, string> = {};
 
-    if (source.dateRange?.[0]) params.dateFrom = source.dateRange[0].format("YYYY-MM-DD");
-    if (source.dateRange?.[1]) params.dateTo = source.dateRange[1].format("YYYY-MM-DD");
-    if (source.statusFilters.length > 0) params.status = source.statusFilters.join(",");
-    if (source.paymentStatusFilters.length > 0) params.paymentStatus = source.paymentStatusFilters.join(",");
+    if (source.dateRange?.[0])
+      params.dateFrom = source.dateRange[0].format("YYYY-MM-DD");
+    if (source.dateRange?.[1])
+      params.dateTo = source.dateRange[1].format("YYYY-MM-DD");
+    if (source.statusFilters.length > 0)
+      params.status = source.statusFilters.join(",");
+    if (source.paymentStatusFilters.length > 0)
+      params.paymentStatus = source.paymentStatusFilters.join(",");
     if (source.doctorFilter) params.doctorId = source.doctorFilter;
-    if (source.patientKeyword.trim()) params.patientKeyword = source.patientKeyword.trim();
+    if (source.patientKeyword.trim())
+      params.patientKeyword = source.patientKeyword.trim();
 
     return params;
   };
@@ -130,8 +161,9 @@ export const useAppointmentManagement = () => {
       .filter((v) => statusSet.has(v))
       .map((v) => v as AppointmentStatus);
 
-    const resolvedPaymentStatusFilters = toArrayQueryValue(searchParams.get("paymentStatus"))
-      .filter((v) => paymentStatusSet.has(v));
+    const resolvedPaymentStatusFilters = toArrayQueryValue(
+      searchParams.get("paymentStatus"),
+    ).filter((v) => paymentStatusSet.has(v));
 
     return {
       dateRange: resolvedDateRange,
@@ -178,7 +210,10 @@ export const useAppointmentManagement = () => {
     }
   };
 
-  const updatePaymentStatus = async (id: string, paymentStatus: string): Promise<boolean> => {
+  const updatePaymentStatus = async (
+    id: string,
+    paymentStatus: string,
+  ): Promise<boolean> => {
     try {
       await api.patch(`/appointments/${id}`, { paymentStatus });
       message.success("Cập nhật trạng thái hoàn tiền thành công");
@@ -203,9 +238,18 @@ export const useAppointmentManagement = () => {
     setSelectedAppointment(null);
   };
 
-  const confirmUpdateStatus = (record: Appointment, nextStatus: AppointmentStatus) => {
-    if (record.status === "PENDING" && nextStatus === "CONFIRM" && !isPaid(record)) {
-      message.warning("Lịch chưa thanh toán, không thể chuyển sang Đã xác nhận");
+  const confirmUpdateStatus = (
+    record: Appointment,
+    nextStatus: AppointmentStatus,
+  ) => {
+    if (
+      record.status === "PENDING" &&
+      nextStatus === "CONFIRM" &&
+      !isPaid(record)
+    ) {
+      message.warning(
+        "Lịch chưa thanh toán, không thể chuyển sang Đã xác nhận",
+      );
       return;
     }
 
@@ -217,7 +261,8 @@ export const useAppointmentManagement = () => {
       return;
     }
 
-    const currentLabel = STATUS_MAP[record.status as AppointmentStatus]?.text || record.status;
+    const currentLabel =
+      STATUS_MAP[record.status as AppointmentStatus]?.text || record.status;
     const nextLabel = STATUS_MAP[nextStatus]?.text || nextStatus;
 
     Modal.confirm({
@@ -256,7 +301,8 @@ export const useAppointmentManagement = () => {
       return;
     }
 
-    const actionLabel = cancelOption === "NO_REFUND" ? "Hủy không hoàn tiền" : "Hủy và hoàn tiền";
+    const actionLabel =
+      cancelOption === "NO_REFUND" ? "Hủy không hoàn tiền" : "Hủy và hoàn tiền";
 
     Modal.confirm({
       title: "Xác nhận thao tác hủy lịch",
@@ -290,10 +336,17 @@ export const useAppointmentManagement = () => {
     });
   };
 
-  const confirmUpdatePaymentStatus = (record: Appointment, nextPaymentStatus: string) => {
-    const currentPaymentStatus = String(record.payment?.paymentStatus || "UNPAID").toUpperCase();
-    const currentLabel = PAYMENT_STATUS_MAP[currentPaymentStatus]?.text || currentPaymentStatus;
-    const nextLabel = PAYMENT_STATUS_MAP[nextPaymentStatus]?.text || nextPaymentStatus;
+  const confirmUpdatePaymentStatus = (
+    record: Appointment,
+    nextPaymentStatus: string,
+  ) => {
+    const currentPaymentStatus = String(
+      record.payment?.paymentStatus || "UNPAID",
+    ).toUpperCase();
+    const currentLabel =
+      PAYMENT_STATUS_MAP[currentPaymentStatus]?.text || currentPaymentStatus;
+    const nextLabel =
+      PAYMENT_STATUS_MAP[nextPaymentStatus]?.text || nextPaymentStatus;
 
     Modal.confirm({
       title: "Xác nhận cập nhật hoàn tiền",

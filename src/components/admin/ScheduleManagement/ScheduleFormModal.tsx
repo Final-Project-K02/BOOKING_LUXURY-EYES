@@ -15,16 +15,16 @@ import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import type { FormInstance } from "antd";
 import dayjs from "dayjs";
 import type { Dayjs } from "dayjs";
-import type { Doctor } from "../../types/Doctor";
+import type { Doctor } from "../../../types/Doctor";
 import type {
   Schedule,
   TimeSlot,
   FormValues,
-} from "../../hooks/ScheduleManagement/useScheduleManagement";
+} from "../../../hooks/ScheduleManagement/useScheduleManagement";
 import {
   ROOMS,
   isBookedLikeStatus,
-} from "../../hooks/ScheduleManagement/useScheduleManagement";
+} from "../../../hooks/ScheduleManagement/useScheduleManagement";
 
 interface Props {
   open: boolean;

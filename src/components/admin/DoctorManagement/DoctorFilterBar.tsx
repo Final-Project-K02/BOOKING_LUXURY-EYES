@@ -1,5 +1,5 @@
 import { Button, Form, Input, InputNumber, Space } from "antd";
-import type { DoctorFilter } from "../../types/Doctor";
+import type { DoctorFilter } from "../../../types/Doctor";
 
 interface Props {
   filters: DoctorFilter;

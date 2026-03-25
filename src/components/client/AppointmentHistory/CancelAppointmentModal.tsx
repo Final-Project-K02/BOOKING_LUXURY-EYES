@@ -1,7 +1,7 @@
 import { InfoCircleOutlined } from "@ant-design/icons";
 import { Input, Modal, Select } from "antd";
 import dayjs from "dayjs";
-import type { Appointment } from "../../types/Booking";
+import type { Appointment } from "../../../types/Booking";
 import { getDoctorName } from "./appointmentHelpers";
 
 const { TextArea } = Input;

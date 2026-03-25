@@ -9,7 +9,7 @@ import {
 import { Avatar, Button, Card, Tag } from "antd";
 import dayjs from "dayjs";
 import { Link } from "react-router-dom";
-import type { Appointment } from "../../types/Booking";
+import type { Appointment } from "../../../types/Booking";
 import {
   formatCountdown,
   getCanceledByText,

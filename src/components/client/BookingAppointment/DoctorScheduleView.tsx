@@ -1,12 +1,12 @@
 import { EnvironmentOutlined, HomeOutlined } from "@ant-design/icons";
 import { Avatar, Button, Card } from "antd";
-import type { Doctor } from "../../types/Doctor";
+import type { Doctor } from "../../../types/Doctor";
 import type {
   DoctorSchedule,
   SelectedSchedule,
   TimeSlot,
   TimeSlotUI,
-} from "../../types/Schedule";
+} from "../../../types/Schedule";
 import TimeSlotPicker from "./TimeSlotPicker";
 
 interface DoctorScheduleViewProps {

@@ -1,8 +1,8 @@
 import { Button, Form, Image, Input, InputNumber, Modal, Upload } from "antd";
 import type { UploadProps } from "antd";
 import type { FormInstance } from "antd/es/form";
-import type { Doctor, DoctorFormValues } from "../../types/Doctor";
-import { getPriceByExperience } from "../../utils/DoctorManagement/doctorUtils";
+import type { Doctor, DoctorFormValues } from "../../../types/Doctor";
+import { getPriceByExperience } from "../../../utils/DoctorManagement/doctorUtils";
 
 interface Props {
   open: boolean;

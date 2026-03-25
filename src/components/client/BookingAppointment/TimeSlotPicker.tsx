@@ -1,12 +1,12 @@
 import { CloudOutlined, SunOutlined } from "@ant-design/icons";
 import { Button, Tooltip } from "antd";
-import { getDayLabel } from "../../utils/dateUtils";
+import { getDayLabel } from "../../../utils/dateUtils";
 import type {
   DoctorSchedule,
   SelectedSchedule,
   TimeSlot,
   TimeSlotUI,
-} from "../../types/Schedule";
+} from "../../../types/Schedule";
 import dayjs from "dayjs";
 
 interface TimeSlotPickerProps {

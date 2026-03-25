@@ -1,7 +1,7 @@
 import { CloseCircleOutlined } from "@ant-design/icons";
 import { Button, Modal, Tag } from "antd";
 import dayjs from "dayjs";
-import type { Appointment } from "../../types/Booking";
+import type { Appointment } from "../../../types/Booking";
 import {
   getCanceledByText,
   getDepositAmount,

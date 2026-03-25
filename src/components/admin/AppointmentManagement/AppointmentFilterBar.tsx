@@ -1,12 +1,12 @@
 import { Button, DatePicker, Input, Select } from "antd";
 import type { Dayjs } from "dayjs";
-import type { AppointmentStatus } from "../../types/Booking";
-import type { Doctor } from "../../types/Doctor";
+import type { AppointmentStatus } from "../../../types/Booking";
+import type { Doctor } from "../../../types/Doctor";
 import {
   FILTERABLE_STATUSES,
   PAYMENT_STATUS_MAP,
   STATUS_MAP,
-} from "../../constants/AppointmentManagement/appointmentAdminConstants";
+} from "../../../constants/AppointmentManagement/appointmentAdminConstants";
 
 const { RangePicker } = DatePicker;
 

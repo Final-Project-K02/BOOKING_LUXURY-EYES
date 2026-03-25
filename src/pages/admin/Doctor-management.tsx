@@ -10,8 +10,8 @@ import {
   Tooltip,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import DoctorFilterBar from "../../components/DoctorManagement/DoctorFilterBar";
-import DoctorFormModal from "../../components/DoctorManagement/DoctorFormModal";
+import DoctorFilterBar from "../../components/admin/DoctorManagement/DoctorFilterBar";
+import DoctorFormModal from "../../components/admin/DoctorManagement/DoctorFormModal";
 import useDoctorManagement from "../../hooks/DoctorManagement/useDoctorManagement";
 import type { Doctor } from "../../types/Doctor";
 

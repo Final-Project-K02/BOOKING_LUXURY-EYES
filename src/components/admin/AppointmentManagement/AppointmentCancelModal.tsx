@@ -1,10 +1,10 @@
 import { Input, Modal, Radio } from "antd";
-import type { Appointment } from "../../types/Booking";
-import type { CancelOption } from "../../types/AppointmentManagement";
+import type { Appointment } from "../../../types/Booking";
+import type { CancelOption } from "../../../types/AppointmentManagement";
 import {
   getPatientName,
   requiresRefundChoice,
-} from "../../utils/AppointmentManagement/appointmentAdminHelpers";
+} from "../../../utils/AppointmentManagement/appointmentAdminHelpers";
 
 const { TextArea } = Input;
 

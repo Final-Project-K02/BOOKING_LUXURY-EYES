@@ -2,7 +2,7 @@ import { CalendarOutlined } from "@ant-design/icons";
 import { Button, Card, DatePicker, Select } from "antd";
 import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
-import type { PatientResponse } from "../../types/PatientProfile";
+import type { PatientResponse } from "../../../types/PatientProfile";
 
 const { RangePicker } = DatePicker;
 

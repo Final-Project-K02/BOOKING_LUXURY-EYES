@@ -1,17 +1,17 @@
 import { Button, Select, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import type { Appointment, AppointmentStatus } from "../../types/Booking";
+import type { Appointment, AppointmentStatus } from "../../../types/Booking";
 import {
   PAYMENT_STATUS_FLOW,
   PAYMENT_STATUS_MAP,
   STATUS_FLOW,
   STATUS_MAP,
-} from "../../constants/AppointmentManagement/appointmentAdminConstants";
+} from "../../../constants/AppointmentManagement/appointmentAdminConstants";
 import {
   getCancelByText,
   getPatientName,
   isPaid,
-} from "../../utils/AppointmentManagement/appointmentAdminHelpers";
+} from "../../../utils/AppointmentManagement/appointmentAdminHelpers";
 
 interface AppointmentTableProps {
   appointments: Appointment[];
