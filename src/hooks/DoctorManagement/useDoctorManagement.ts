@@ -2,8 +2,15 @@ import type { UploadProps } from "antd";
 import { Form, message, Upload } from "antd";
 import { useEffect, useState } from "react";
 import api from "../../api";
-import { AVATAR_MAX_SIZE_BYTES, AVATAR_UPLOAD_FOLDER } from "../../constants/DoctorManagement/doctorConstants";
-import type { Doctor, DoctorFilter, DoctorFormValues } from "../../types/Doctor";
+import {
+  AVATAR_MAX_SIZE_BYTES,
+  AVATAR_UPLOAD_FOLDER,
+} from "../../constants/DoctorManagement/doctorConstants";
+import type {
+  Doctor,
+  DoctorFilter,
+  DoctorFormValues,
+} from "../../types/Doctor";
 import { getPriceByExperience } from "../../utils/DoctorManagement/doctorUtils";
 
 const useDoctorManagement = () => {

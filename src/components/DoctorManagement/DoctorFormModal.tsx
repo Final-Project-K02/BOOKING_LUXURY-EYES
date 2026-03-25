@@ -1,12 +1,4 @@
-import {
-  Button,
-  Form,
-  Image,
-  Input,
-  InputNumber,
-  Modal,
-  Upload,
-} from "antd";
+import { Button, Form, Image, Input, InputNumber, Modal, Upload } from "antd";
 import type { UploadProps } from "antd";
 import type { FormInstance } from "antd/es/form";
 import type { Doctor, DoctorFormValues } from "../../types/Doctor";
@@ -47,7 +39,10 @@ const DoctorFormModal: React.FC<Props> = ({
         onFinish={onFinish}
         onValuesChange={(changedValues, allValues) => {
           if (
-            Object.prototype.hasOwnProperty.call(changedValues, "experience_year")
+            Object.prototype.hasOwnProperty.call(
+              changedValues,
+              "experience_year",
+            )
           ) {
             const year = Number(allValues.experience_year ?? 0);
             if (!Number.isNaN(year)) {
