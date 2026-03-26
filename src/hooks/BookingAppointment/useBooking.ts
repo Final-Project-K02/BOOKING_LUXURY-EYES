@@ -1,5 +1,7 @@
 import { skipToken } from "@reduxjs/toolkit/query";
+import type { FetchBaseQueryError } from "@reduxjs/toolkit/query";
 import { message } from "antd";
+import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -10,75 +12,119 @@ import {
   useGetAppointmentsQuery,
   useGetBookingByScheduleIdQuery,
 } from "../../app/services/appointmentApi";
+import { useGetDoctorsQuery } from "../../app/services/doctorApi";
+import {
+  useCreatePatientProfileMutation,
+  useDeletePatientProfileMutation,
+  useGetPatientProfileQuery,
+  useUpdatePatientProfileMutation,
+} from "../../app/services/patientProfile";
 import { useGetScheduleDoctorIdQuery } from "../../app/services/scheduleApi";
+import { BOOKING_PAGE_SIZE, CLINIC_LOCATION } from "../../constants/BookingAppointment";
 import type { AppointmentStatus } from "../../types/Booking";
-import { BLOCK_STATUSES } from "../../types/Booking";
 import type { Doctor } from "../../types/Doctor";
-import type {
-  SelectedSchedule,
-  TimeSlot,
-  TimeSlotUI,
-} from "../../types/Schedule";
+import type { CreatePatientInput, PatientResponse } from "../../types/PatientProfile";
+import type { SelectedSchedule, TimeSlot } from "../../types/Schedule";
+import { buildSlotsWithState } from "../../utils/BookingAppointment";
 
 /**
- * Quản lý toàn bộ flow đặt lịch: chọn bác sĩ, chọn slot, xác nhận & thanh toán.
+ * Hook chính cho toàn bộ flow đặt lịch:
+ * - Tìm kiếm bác sĩ (search, filter, pagination)
+ * - Quản lý hồ sơ bệnh nhân (CRUD)
+ * - Chọn bác sĩ → chọn slot → xác nhận & thanh toán
  */
 export const useBooking = () => {
   const nav = useNavigate();
   const { user, isAuthenticated } = useAppSelector((state) => state.auth);
 
+  // ===== STATE =====
+
+  // Doctor search
+  const [inputSearch, setInputSearch] = useState<string>("");
+  const [delaySearch, setDelaySearch] = useState<string>("");
+  const [fromDate, setFromDate] = useState<string>("");
+  const [toDate, setToDate] = useState<string>("");
+  const [currentPage, setCurrentPage] = useState<number>(1);
+
+  // Patient profile
+  const [selectedPerson, setSelectedPerson] = useState<string>("");
+  const [showAddPatientModal, setShowAddPatientModal] = useState(false);
+  const [editingPatient, setEditingPatient] = useState<PatientResponse | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+
+  // Booking
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
   const [selectedDate, setSelectedDate] = useState<number | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
-  const [selectedSchedule, setSelectedSchedule] =
-    useState<SelectedSchedule | null>(null);
+  const [selectedSchedule, setSelectedSchedule] = useState<SelectedSchedule | null>(null);
   const [symptoms, setSymptoms] = useState<string>("");
 
-  // Schedule của bác sĩ đang chọn
+  // ===== FETCH =====
+
+  const { data: doctorsData, isLoading, isFetching, isError } = useGetDoctorsQuery({
+    inputSearch: delaySearch,
+    scheduleDateFrom: fromDate || undefined,
+    scheduleDateTo: toDate || undefined,
+    page: currentPage,
+    limit: BOOKING_PAGE_SIZE,
+  });
+
+  const { data: patientProfileResponse } = useGetPatientProfileQuery();
+  const patientList: PatientResponse[] = useMemo(
+    () => patientProfileResponse?.data ?? [],
+    [patientProfileResponse?.data],
+  );
+
   const { data: schedule } = useGetScheduleDoctorIdQuery(
     selectedDoctor?._id as string,
-    {
-      skip: !selectedDoctor?._id,
-      refetchOnFocus: true,
-      refetchOnReconnect: true,
-    },
+    { skip: !selectedDoctor?._id, refetchOnFocus: true, refetchOnReconnect: true },
   );
   const scheduleItem = useMemo(
-    () =>
-      (schedule?.data ?? []).find(
-        (item) => item.doctorId === selectedDoctor?._id,
-      ) ?? null,
+    () => (schedule?.data ?? []).find((item) => item.doctorId === selectedDoctor?._id) ?? null,
     [schedule?.data, selectedDoctor?._id],
   );
 
-  // Lịch hiện tại của user (để kiểm tra xung đột)
-  const { data: getBookingUserId } = useGetAppointmentsQuery(
-    user?._id ?? skipToken,
-    { refetchOnFocus: true, refetchOnReconnect: true },
-  );
-  const getBookingUserData = useMemo(
-    () => getBookingUserId?.data ?? [],
-    [getBookingUserId],
-  );
-
-  // Lịch đã đặt theo schedule (để kiểm tra slot bị chiếm)
-  const { data: getBookingBySlotId } = useGetBookingByScheduleIdQuery(
+  const { data: bookingsByScheduleRes } = useGetBookingByScheduleIdQuery(
     scheduleItem?._id ?? skipToken,
     { refetchOnFocus: true, refetchOnReconnect: true },
   );
-  const getBookingBySchedIdData = useMemo(
-    () => getBookingBySlotId?.data ?? [],
-    [getBookingBySlotId],
+  const bookingsBySchedule = useMemo(() => bookingsByScheduleRes?.data ?? [], [bookingsByScheduleRes]);
+
+  const { data: bookingsByUserRes } = useGetAppointmentsQuery(
+    user?._id ?? skipToken,
+    { refetchOnFocus: true, refetchOnReconnect: true },
   );
+  const bookingsByUser = useMemo(() => bookingsByUserRes?.data ?? [], [bookingsByUserRes]);
 
-  const [createBooking, { isLoading: isCreatingBooking }] =
-    useCreateBookingMutation();
-  const [createVnpayLink, { isLoading: isCreatingPaymentLink }] =
-    useCreateVnpayLinkMutation();
+  const [createBooking, { isLoading: isCreatingBooking }] = useCreateBookingMutation();
+  const [createVnpayLink, { isLoading: isCreatingPaymentLink }] = useCreateVnpayLinkMutation();
+  const [createPatientProfile, { isLoading: isCreatingPatient }] = useCreatePatientProfileMutation();
+  const [updatePatientProfile, { isLoading: isUpdatingPatient }] = useUpdatePatientProfileMutation();
+  const [deletePatientProfile] = useDeletePatientProfileMutation();
 
+  // Derived values
+  const doctors = useMemo(() => doctorsData?.data ?? [], [doctorsData]);
   const totalAmount = Number(selectedDoctor?.price) || 0;
   const depositAmount = Math.ceil(totalAmount * 0.4);
   const isSubmitting = isCreatingBooking || isCreatingPaymentLink;
+
+  const slotsWithState = useMemo(
+    () => buildSlotsWithState(scheduleItem?.timeSlots ?? [], bookingsBySchedule, bookingsByUser),
+    [scheduleItem?.timeSlots, bookingsByUser, bookingsBySchedule],
+  );
+
+  // ===== EFFECTS =====
+
+  // Debounce search input
+  useEffect(() => {
+    const timeout = setTimeout(() => setDelaySearch(inputSearch), 300);
+    return () => clearTimeout(timeout);
+  }, [inputSearch]);
+
+  // Reset page khi filter thay đổi
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [delaySearch, fromDate, toDate]);
 
   // Reset slot khi schedule thay đổi và không có slot
   useEffect(() => {
@@ -89,47 +135,101 @@ export const useBooking = () => {
     }
   }, [scheduleItem]);
 
-  // Tính trạng thái disabled cho từng slot
-  const slotsWithState = useMemo<TimeSlotUI[]>(() => {
-    if (!scheduleItem?.timeSlots || !getBookingBySchedIdData) return [];
-    const today = dayjs().startOf("day");
+  // ===== ACTIONS =====
 
-    return scheduleItem.timeSlots
-      .filter((slot) => dayjs(slot.date).startOf("day").isAfter(today))
-      .map((slot) => {
-        const slotDate = dayjs(slot.date).format("YYYY-MM-DD");
+  // Doctor search
+  const handleReset = () => {
+    setInputSearch("");
+    setFromDate("");
+    setToDate("");
+    setCurrentPage(1);
+    setSelectedDoctor(null);
+    setSelectedDate(null);
+    setSelectedSlot(null);
+    setSelectedSchedule(null);
+  };
 
-        const doctorBlocked = getBookingBySchedIdData.some(
-          (apm) =>
-            dayjs(apm.dateTime).format("YYYY-MM-DD") === slotDate &&
-            apm.time === slot.time &&
-            BLOCK_STATUSES.includes(apm.status),
-        );
+  const handleRangeChange = (dates: (Dayjs | null)[] | null) => {
+    if (dates && dates[0] && dates[1]) {
+      setFromDate(dates[0].format("YYYY-MM-DD"));
+      setToDate(dates[1].format("YYYY-MM-DD"));
+    } else {
+      setFromDate("");
+      setToDate("");
+    }
+    setCurrentPage(1);
+    setSelectedDoctor(null);
+    setSelectedDate(null);
+    setSelectedSlot(null);
+    setSelectedSchedule(null);
+  };
 
-        const userHasConflict = getBookingUserData.some(
-          (apm) =>
-            dayjs(apm.dateTime).format("YYYY-MM-DD") === slotDate &&
-            apm.time === slot.time &&
-            BLOCK_STATUSES.includes(apm.status),
-        );
+  const disabledDate = (current: Dayjs) => current && current < dayjs().startOf("day");
 
-        const disabled =
-          slot.status !== "AVAILABLE" || doctorBlocked || userHasConflict;
+  // Patient profile
+  const handlePatientChange = (value: string) => {
+    if (value === "add-new") {
+      setIsEditing(false);
+      setEditingPatient(null);
+      setShowAddPatientModal(true);
+    } else {
+      setSelectedPerson(value);
+    }
+  };
 
-        return {
-          ...slot,
-          disabled,
-          disabledReason: doctorBlocked
-            ? "Khung giờ đã được đặt"
-            : userHasConflict
-              ? "Bạn đã có lịch khám cùng khung giờ này"
-              : slot.status !== "AVAILABLE"
-                ? "Khung giờ không khả dụng"
-                : undefined,
-        };
-      });
-  }, [scheduleItem?.timeSlots, getBookingUserData, getBookingBySchedIdData]);
+  const openEditModal = (patient: PatientResponse) => {
+    setEditingPatient(patient);
+    setIsEditing(true);
+    setShowAddPatientModal(true);
+  };
 
+  const closeModal = () => {
+    setShowAddPatientModal(false);
+    setEditingPatient(null);
+    setIsEditing(false);
+  };
+
+  const handleAddPatient = async (values: CreatePatientInput) => {
+    try {
+      if (isEditing && editingPatient) {
+        await updatePatientProfile({ id: editingPatient._id, body: values }).unwrap();
+        message.success("Cập nhật thông tin thành công");
+      } else {
+        const res = await createPatientProfile(values).unwrap();
+        setSelectedPerson(res.data._id);
+        message.success("Thêm hồ sơ thành công");
+      }
+      setShowAddPatientModal(false);
+      setEditingPatient(null);
+    } catch (err) {
+      console.error("Error:", err);
+      const error = err as FetchBaseQueryError;
+      const apiError = error.data as { message?: string; error?: string[] } | undefined;
+      if (Array.isArray(apiError?.error)) {
+        message.error(apiError.error.join(" | "));
+        return;
+      }
+      if (typeof apiError?.message === "string") {
+        message.error(apiError.message);
+        return;
+      }
+      message.error(isEditing ? "Cập nhật thất bại" : "Thêm hồ sơ thất bại");
+    }
+  };
+
+  const handleDeletePatient = async (id: string) => {
+    if (!confirm("Bạn có chắc muốn xóa hồ sơ này không?")) return;
+    try {
+      await deletePatientProfile(id).unwrap();
+      if (selectedPerson === id) setSelectedPerson("");
+      message.success("Xóa hồ sơ thành công");
+    } catch (error) {
+      console.log(error);
+      message.error("Xóa hồ sơ thất bại");
+    }
+  };
+
+  // Booking
   const handleDoctorSelect = (doctor: Doctor) => {
     setSelectedDoctor(doctor);
     setSelectedDate(null);
@@ -144,7 +244,7 @@ export const useBooking = () => {
         scheduleSlotId: slot.scheduleSlotId,
         date: slot.date,
         time: slot.time,
-        location: "Vân Canh - Hoài Đức",
+        location: CLINIC_LOCATION,
         room: scheduleItem.roomName,
         displayDate: `${slot.time} - ${dayjs(slot.date).format("DD/MM")}`,
       });
@@ -158,17 +258,13 @@ export const useBooking = () => {
     setSelectedSchedule(null);
   };
 
-  /**
-   * Xác nhận đặt lịch và chuyển tới cổng thanh toán.
-   * @param selectedPerson - ID hồ sơ bệnh nhân được chọn
-   */
-  const handleConfirmBooking = async (selectedPerson: string) => {
+  const handleConfirmBooking = async (patientProfileId: string) => {
     if (!user?._id || !isAuthenticated) {
       message.error("Vui lòng đăng nhập");
       nav("/auth/login");
       return false;
     }
-    if (!selectedPerson) {
+    if (!patientProfileId) {
       message.error("Vui lòng chọn người tới khám");
       return false;
     }
@@ -207,7 +303,7 @@ export const useBooking = () => {
         id: scheduleItem.roomId ?? 1,
         name: scheduleItem.roomName,
       },
-      patientProfileId: selectedPerson || undefined,
+      patientProfileId: patientProfileId || undefined,
     };
 
     if (
@@ -254,30 +350,36 @@ export const useBooking = () => {
       }
     } catch (error) {
       const e = error as { data?: { message?: string } };
-      message.error(
-        e?.data?.message || "Đặt lịch thất bại, vui lòng thử lại sau",
-      );
+      message.error(e?.data?.message || "Đặt lịch thất bại, vui lòng thử lại sau");
     }
 
     return false;
   };
 
   return {
-    selectedDoctor,
-    selectedDate,
-    setSelectedDate,
-    selectedSlot,
-    selectedSchedule,
-    symptoms,
-    setSymptoms,
-    scheduleItem,
-    slotsWithState,
-    totalAmount,
-    depositAmount,
-    isSubmitting,
-    handleDoctorSelect,
-    handleTimeSelect,
-    handleBackToList,
-    handleConfirmBooking,
+    // Doctor search
+    inputSearch, setInputSearch,
+    fromDate, toDate,
+    currentPage, setCurrentPage,
+    pageSize: BOOKING_PAGE_SIZE,
+    doctorsData, doctors,
+    isLoading, isFetching, isError,
+    handleReset, handleRangeChange, disabledDate,
+
+    // Patient profile
+    selectedPerson,
+    patientList,
+    showAddPatientModal, editingPatient, isEditing,
+    isCreatingPatient, isUpdatingPatient,
+    handlePatientChange, handleAddPatient, handleDeletePatient,
+    openEditModal, closeModal,
+
+    // Booking
+    selectedDoctor, selectedDate, setSelectedDate,
+    selectedSlot, selectedSchedule,
+    symptoms, setSymptoms,
+    scheduleItem, slotsWithState,
+    totalAmount, depositAmount, isSubmitting,
+    handleDoctorSelect, handleTimeSelect, handleBackToList, handleConfirmBooking,
   };
 };
