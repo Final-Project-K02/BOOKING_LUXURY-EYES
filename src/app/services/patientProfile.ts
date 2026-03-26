@@ -1,5 +1,5 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
-import type { PatientInput } from "../../components/BookingAppointment/AddPatientModal";
+import type { PatientInput } from "../../components/client/BookingAppointment/AddPatientModal";
 import type {
   CreatePatientResponse,
   PatientData,

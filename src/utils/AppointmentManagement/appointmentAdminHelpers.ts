@@ -39,7 +39,12 @@ export const getPatientPhone = (record: Appointment): string => {
 };
 
 export const getBookingAccountEmail = (record: Appointment): string => {
-  if (typeof record.patient === "object" && record.patient?.email)
+  if (
+    typeof record.patient === "object" &&
+    record.patient !== null &&
+    "email" in record.patient &&
+    record.patient.email
+  )
     return record.patient.email;
   if (record.patientProfile?.email) return record.patientProfile.email;
   return "---";

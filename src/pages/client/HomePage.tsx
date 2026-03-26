@@ -1,16 +1,13 @@
 import banner from "../../assets/imgs/banner.png";
 import AuthModal from "../../components/auth/AuthModal";
-import AboutSection from "../../components/Home/AboutSection";
-import DoctorsSection from "../../components/Home/DoctorsSection";
-import FeaturesSection from "../../components/Home/FeaturesSection";
-import HeroSection from "../../components/Home/HeroSection";
-import HomePageStyles from "../../components/Home/HomePageStyles";
-import NewsSection from "../../components/Home/NewsSection";
-import QuickServicesSection from "../../components/Home/QuickServicesSection";
-import { useHomeAuth } from "../../hooks/HomePage/useHomeAuth";
-import { useHomeContent } from "../../hooks/HomePage/useHomeContent";
-import { useHomeDoctorSchedules } from "../../hooks/HomePage/useHomeDoctorSchedules";
-import { useHomeDoctors } from "../../hooks/HomePage/useHomeDoctors";
+import AboutSection from "../../components/client/Home/AboutSection";
+import DoctorsSection from "../../components/client/Home/DoctorsSection";
+import FeaturesSection from "../../components/client/Home/FeaturesSection";
+import HeroSection from "../../components/client/Home/HeroSection";
+import HomePageStyles from "../../components/client/Home/HomePageStyles";
+import NewsSection from "../../components/client/Home/NewsSection";
+import QuickServicesSection from "../../components/client/Home/QuickServicesSection";
+import { useHomePage } from "../../hooks/client/useHomePage";
 
 const HomePage = () => {
   const {
@@ -18,12 +15,10 @@ const HomePage = () => {
     authModalMode,
     closeAuthModal,
     handleNavigateWithAuth,
-  } = useHomeAuth();
-  const { doctors, experiencedDoctors } = useHomeDoctors();
-  const { features, news } = useHomeContent();
-
-  // Giữ side-effect gọi lịch bác sĩ như behavior cũ.
-  useHomeDoctorSchedules(doctors);
+    experiencedDoctors,
+    features,
+    news,
+  } = useHomePage();
 
   return (
     <div className="min-h-screen bg-white">
