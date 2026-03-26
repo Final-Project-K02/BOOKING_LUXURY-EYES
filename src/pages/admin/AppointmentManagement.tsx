@@ -2,7 +2,7 @@ import AppointmentFilterBar from "../../components/admin/AppointmentManagement/A
 import AppointmentTable from "../../components/admin/AppointmentManagement/AppointmentTable";
 import AppointmentDetailModal from "../../components/admin/AppointmentManagement/AppointmentDetailModal";
 import AppointmentCancelModal from "../../components/admin/AppointmentManagement/AppointmentCancelModal";
-import { useAppointmentManagement } from "../../hooks/AppointmentManagement/useAppointmentManagement";
+import { useAppointmentManagement } from "../../hooks/admin/useAppointmentManagement";
 
 const AppointmentManagement = () => {
   const am = useAppointmentManagement();

@@ -1,4 +1,4 @@
-import { useScheduleManagement } from "../../hooks/ScheduleManagement/useScheduleManagement";
+import { useScheduleManagement } from "../../hooks/admin/useScheduleManagement";
 import ScheduleTable from "../../components/admin/ScheduleManagement/ScheduleTable";
 import ScheduleFormModal from "../../components/admin/ScheduleManagement/ScheduleFormModal";
 

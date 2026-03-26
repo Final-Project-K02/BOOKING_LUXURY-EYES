@@ -19,8 +19,8 @@ import {
 } from "antd";
 import dayjs, { Dayjs } from "dayjs";
 import React, { useEffect } from "react";
-import { APPOINTMENT_STATUS_MAP } from "../../constants/Dashboard";
-import { useDashboard } from "../../hooks/Dashboard/useDashboard";
+import { APPOINTMENT_STATUS_MAP } from "../../constants/admin/dashboardContants";
+import { useDashboard } from "../../hooks/admin/useDashboard";
 import type { TableAppointment } from "../../types/Dashboard";
 
 // ===== TABLE COLUMNS =====

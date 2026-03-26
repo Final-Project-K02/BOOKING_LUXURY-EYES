@@ -20,11 +20,11 @@ import type {
   Schedule,
   TimeSlot,
   FormValues,
-} from "../../../hooks/ScheduleManagement/useScheduleManagement";
+} from "../../../hooks/admin/useScheduleManagement";
 import {
   ROOMS,
   isBookedLikeStatus,
-} from "../../../hooks/ScheduleManagement/useScheduleManagement";
+} from "../../../hooks/admin/useScheduleManagement";
 
 interface Props {
   open: boolean;

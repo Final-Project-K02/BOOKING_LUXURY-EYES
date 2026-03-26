@@ -3,7 +3,7 @@ import dayjs from "dayjs";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../api";
-import { DOCTOR_FETCH_LIMIT } from "../../constants/Dashboard";
+import { DOCTOR_FETCH_LIMIT } from "../../constants/admin/dashboardContants";
 import type {
   AppointmentApi,
   DashboardStats,

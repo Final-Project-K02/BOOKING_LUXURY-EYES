@@ -1,7 +1,7 @@
 import {
   DEFAULT_PRICE,
   PRICE_TIERS,
-} from "../../constants/DoctorManagement/doctorConstants";
+} from "../../constants/admin/doctorConstants";
 
 /** Tính giá khám tự động dựa vào số năm kinh nghiệm */
 export const getPriceByExperience = (experienceYear: number): number => {

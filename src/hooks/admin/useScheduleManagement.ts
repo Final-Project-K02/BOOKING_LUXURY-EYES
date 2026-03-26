@@ -13,7 +13,7 @@ import {
   TIME_OPTIONS,
   FIXED_BLOCK_TIME_MINUTES,
   MIN_SLOT_GAP_MINUTES,
-} from "../../constants/ScheduleManagement/scheduleConstants";
+} from "../../constants/admin/scheduleConstants";
 import {
   isBookedLikeStatus,
   getDateKey,

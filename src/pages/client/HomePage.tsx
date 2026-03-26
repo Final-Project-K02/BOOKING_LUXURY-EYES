@@ -7,7 +7,7 @@ import HeroSection from "../../components/client/Home/HeroSection";
 import HomePageStyles from "../../components/client/Home/HomePageStyles";
 import NewsSection from "../../components/client/Home/NewsSection";
 import QuickServicesSection from "../../components/client/Home/QuickServicesSection";
-import { useHomePage } from "../../hooks/HomePage/useHomePage";
+import { useHomePage } from "../../hooks/client/useHomePage";
 
 const HomePage = () => {
   const {

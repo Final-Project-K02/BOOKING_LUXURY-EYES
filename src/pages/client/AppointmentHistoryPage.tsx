@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import AppointmentCard from "../../components/client/AppointmentHistory/AppointmentCard";
 import AppointmentDetailModal from "../../components/client/AppointmentHistory/AppointmentDetailModal";
 import CancelAppointmentModal from "../../components/client/AppointmentHistory/CancelAppointmentModal";
-import { useAppointmentHistory } from "../../hooks/AppointmentHistory/useAppointmentHistory";
+import { useAppointmentHistory } from "../../hooks/client/useAppointmentHistory";
 
 export type { AppointmentStatus } from "../../types/Booking";
 

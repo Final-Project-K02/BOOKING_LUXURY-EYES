@@ -5,13 +5,15 @@ import BookingFilterSidebar from "../../components/client/BookingAppointment/Boo
 import BookingSummary from "../../components/client/BookingAppointment/BookingSummary";
 import DoctorList from "../../components/client/BookingAppointment/DoctorList";
 import DoctorScheduleView from "../../components/client/BookingAppointment/DoctorScheduleView";
-import { useBooking } from "../../hooks/BookingAppointment/useBooking";
+import { useBooking } from "../../hooks/client/useBooking";
 
 const BookingAppointmentPage = () => {
   const booking = useBooking();
 
-  if (booking.isLoading) return <div className="text-center mt-3">Loading...</div>;
-  if (booking.isError) return <div className="text-center mt-3">Error loading doctors</div>;
+  if (booking.isLoading)
+    return <div className="text-center mt-3">Loading...</div>;
+  if (booking.isError)
+    return <div className="text-center mt-3">Error loading doctors</div>;
 
   return (
     <div className="min-h-screen bg-gray-50 my-4">
@@ -49,7 +51,9 @@ const BookingAppointmentPage = () => {
                   <Button size="large" icon={<UserOutlined />}>
                     Tìm thấy{" "}
                     <span className="font-semibold">
-                      {booking.doctorsData?.meta?.total ?? booking.doctors.length} bác sĩ
+                      {booking.doctorsData?.meta?.total ??
+                        booking.doctors.length}{" "}
+                      bác sĩ
                     </span>{" "}
                     phù hợp
                   </Button>
@@ -70,8 +74,13 @@ const BookingAppointmentPage = () => {
                   <div className="mt-4 flex justify-end">
                     <Pagination
                       current={booking.currentPage}
-                      pageSize={booking.doctorsData?.meta?.limit ?? booking.pageSize}
-                      total={booking.doctorsData?.meta?.total ?? booking.doctors.length}
+                      pageSize={
+                        booking.doctorsData?.meta?.limit ?? booking.pageSize
+                      }
+                      total={
+                        booking.doctorsData?.meta?.total ??
+                        booking.doctors.length
+                      }
                       onChange={(page) => {
                         booking.setCurrentPage(page);
                         booking.handleBackToList();
@@ -112,7 +121,9 @@ const BookingAppointmentPage = () => {
                 totalAmount={booking.totalAmount}
                 depositAmount={booking.depositAmount}
                 isSubmitting={booking.isSubmitting}
-                onConfirm={() => booking.handleConfirmBooking(booking.selectedPerson)}
+                onConfirm={() =>
+                  booking.handleConfirmBooking(booking.selectedPerson)
+                }
               />
             </Card>
           </div>

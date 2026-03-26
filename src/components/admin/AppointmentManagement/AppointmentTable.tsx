@@ -6,7 +6,7 @@ import {
   PAYMENT_STATUS_MAP,
   STATUS_FLOW,
   STATUS_MAP,
-} from "../../../constants/AppointmentManagement/appointmentAdminConstants";
+} from "../../../constants/admin/appointmentAdminConstants";
 import {
   getCancelByText,
   getPatientName,

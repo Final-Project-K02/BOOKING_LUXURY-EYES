@@ -1,5 +1,7 @@
 import type { Appointment } from "../../types/Booking";
 
+export type CancelOption = "REFUND" | "NO_REFUND";
+
 export const buildCanceledReason = (
   appointment: Appointment,
   adminNote: string,

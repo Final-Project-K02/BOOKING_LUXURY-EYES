@@ -3,7 +3,7 @@ import type { Appointment } from "../../../types/Booking";
 import {
   PAYMENT_STATUS_MAP,
   STATUS_MAP,
-} from "../../../constants/AppointmentManagement/appointmentAdminConstants";
+} from "../../../constants/admin/appointmentAdminConstants";
 import {
   getCancelByText,
   getBookingAccountEmail,

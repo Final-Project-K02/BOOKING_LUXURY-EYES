@@ -11,7 +11,7 @@ import {
   STATUS_MAP,
   PAYMENT_STATUS_MAP,
   FILTERABLE_STATUSES,
-} from "../../constants/AppointmentManagement/appointmentAdminConstants";
+} from "../../constants/admin/appointmentAdminConstants";
 import {
   type CancelOption,
   isPaid,

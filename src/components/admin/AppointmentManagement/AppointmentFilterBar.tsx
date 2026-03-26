@@ -6,7 +6,7 @@ import {
   FILTERABLE_STATUSES,
   PAYMENT_STATUS_MAP,
   STATUS_MAP,
-} from "../../../constants/AppointmentManagement/appointmentAdminConstants";
+} from "../../../constants/admin/appointmentAdminConstants";
 
 const { RangePicker } = DatePicker;
 

@@ -5,7 +5,7 @@ import api from "../../api";
 import {
   AVATAR_MAX_SIZE_BYTES,
   AVATAR_UPLOAD_FOLDER,
-} from "../../constants/DoctorManagement/doctorConstants";
+} from "../../constants/admin/doctorConstants";
 import type {
   Doctor,
   DoctorFilter,

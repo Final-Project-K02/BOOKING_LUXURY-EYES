@@ -6,8 +6,8 @@ import type { Doctor } from "../../../types/Doctor";
 import type {
   Schedule,
   TimeSlot,
-} from "../../../hooks/ScheduleManagement/useScheduleManagement";
-import { isBookedLikeStatus } from "../../../hooks/ScheduleManagement/useScheduleManagement";
+} from "../../../hooks/admin/useScheduleManagement";
+import { isBookedLikeStatus } from "../../../hooks/admin/useScheduleManagement";
 
 // Group time slots by date for display in the schedule detail column
 const groupSlotsByDate = (slots: TimeSlot[]) => {

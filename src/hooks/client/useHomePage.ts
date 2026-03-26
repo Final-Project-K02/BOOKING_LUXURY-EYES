@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import api from "../../api";
 import { useAppSelector } from "../../app/hook";
 import { useGetDoctorsQuery } from "../../app/services/doctorApi";
-import { HOME_FEATURES, HOME_NEWS } from "../../constants/HomePage";
+import { HOME_FEATURES, HOME_NEWS } from "../../constants/client/HomeContants";
 import type { Doctor } from "../../types/Doctor";
 import type { DoctorWithSchedule, ScheduleApi } from "../../types/HomePage";
 
