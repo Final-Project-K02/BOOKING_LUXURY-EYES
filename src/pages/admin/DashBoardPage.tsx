@@ -166,9 +166,13 @@ const DashBoardPage: React.FC = () => {
                         <div>{item.doctor}</div>
                         <div style={{ marginTop: 4 }}>
                           <Tag
-                            color={APPOINTMENT_STATUS_MAP[item.status]?.color ?? "default"}
+                            color={
+                              APPOINTMENT_STATUS_MAP[item.status]?.color ??
+                              "default"
+                            }
                           >
-                            {APPOINTMENT_STATUS_MAP[item.status]?.text ?? item.status}
+                            {APPOINTMENT_STATUS_MAP[item.status]?.text ??
+                              item.status}
                           </Tag>
                         </div>
                       </>

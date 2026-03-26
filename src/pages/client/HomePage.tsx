@@ -7,10 +7,7 @@ import HeroSection from "../../components/client/Home/HeroSection";
 import HomePageStyles from "../../components/client/Home/HomePageStyles";
 import NewsSection from "../../components/client/Home/NewsSection";
 import QuickServicesSection from "../../components/client/Home/QuickServicesSection";
-import { useHomeAuth } from "../../hooks/HomePage/useHomeAuth";
-import { useHomeContent } from "../../hooks/HomePage/useHomeContent";
-import { useHomeDoctorSchedules } from "../../hooks/HomePage/useHomeDoctorSchedules";
-import { useHomeDoctors } from "../../hooks/HomePage/useHomeDoctors";
+import { useHomePage } from "../../hooks/HomePage/useHomePage";
 
 const HomePage = () => {
   const {
@@ -18,12 +15,10 @@ const HomePage = () => {
     authModalMode,
     closeAuthModal,
     handleNavigateWithAuth,
-  } = useHomeAuth();
-  const { doctors, experiencedDoctors } = useHomeDoctors();
-  const { features, news } = useHomeContent();
-
-  // Giữ side-effect gọi lịch bác sĩ như behavior cũ.
-  useHomeDoctorSchedules(doctors);
+    experiencedDoctors,
+    features,
+    news,
+  } = useHomePage();
 
   return (
     <div className="min-h-screen bg-white">

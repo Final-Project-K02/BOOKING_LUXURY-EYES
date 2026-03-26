@@ -1,29 +1,45 @@
 import { message } from "antd";
 import dayjs from "dayjs";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../../api";
+import { useAppSelector } from "../../app/hook";
+import { useGetDoctorsQuery } from "../../app/services/doctorApi";
+import { HOME_FEATURES, HOME_NEWS } from "../../constants/HomePage";
 import type { Doctor } from "../../types/Doctor";
+import type { DoctorWithSchedule, ScheduleApi } from "../../types/HomePage";
 
-type ScheduleApi = {
-  _id: string;
-  timeSlots?: Array<{
-    time: string;
-    date: string;
-    status: string;
-  }>;
-};
+type AuthModalMode = "login" | "register";
 
-export type DoctorWithSchedule = Doctor & {
-  upcomingCount: number;
-  nextSlotText?: string;
-};
-
-export const useHomeDoctorSchedules = (doctors: Doctor[]) => {
+export const useHomePage = () => {
+  // ===== STATE =====
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<AuthModalMode>("login");
   const [doctorsWithSchedule, setDoctorsWithSchedule] = useState<
     DoctorWithSchedule[]
   >([]);
   const [loadingDoctorsSchedule, setLoadingDoctorsSchedule] = useState(false);
-  const [searchDoctor, setSearchDoctor] = useState("");
+
+  // ===== FETCH =====
+  const navigate = useNavigate();
+  const authState = useAppSelector((state) => state.auth);
+  const { data: doctorsData } = useGetDoctorsQuery();
+
+  const doctors = useMemo<Doctor[]>(
+    () => doctorsData?.data ?? [],
+    [doctorsData],
+  );
+
+  const experiencedDoctors = useMemo(() => {
+    return doctors
+      .map((doc) => ({ ...doc, experience_year: Number(doc.experience_year) }))
+      .filter((doc) => Number(doc.experience_year) >= 10);
+  }, [doctors]);
+
+  const hasLocalSession = Boolean(
+    localStorage.getItem("accessToken") && localStorage.getItem("user"),
+  );
+  const isAuthenticated = authState.isAuthenticated || hasLocalSession;
 
   const fetchSchedulesByDoctor = useCallback(async (doctorId: string) => {
     const res = await api.get("/schedules", { params: { doctorId } });
@@ -34,7 +50,7 @@ export const useHomeDoctorSchedules = (doctors: Doctor[]) => {
     try {
       setLoadingDoctorsSchedule(true);
 
-      const activeDoctors = (doctors || []).filter(
+      const activeDoctors = doctors.filter(
         (d: Doctor & { is_active?: boolean }) => d?.is_active !== false,
       );
 
@@ -54,7 +70,6 @@ export const useHomeDoctorSchedules = (doctors: Doctor[]) => {
                 const isFutureOrToday =
                   slotDay.isSame(dayjs(), "day") ||
                   slotDay.isAfter(dayjs(), "day");
-
                 const isAvailable =
                   String(slot.status || "").toUpperCase() === "AVAILABLE";
 
@@ -91,7 +106,7 @@ export const useHomeDoctorSchedules = (doctors: Doctor[]) => {
       );
 
       const filtered = results
-        .filter((doctor) => doctor.upcomingCount > 0)
+        .filter((d) => d.upcomingCount > 0)
         .sort((a, b) => b.upcomingCount - a.upcomingCount);
 
       setDoctorsWithSchedule(filtered);
@@ -103,30 +118,42 @@ export const useHomeDoctorSchedules = (doctors: Doctor[]) => {
     }
   }, [doctors, fetchSchedulesByDoctor]);
 
+  // ===== ACTIONS =====
+  const handleNavigateWithAuth = useCallback(
+    (path: string) => {
+      if (!isAuthenticated) {
+        setAuthModalMode("login");
+        setAuthModalOpen(true);
+        return;
+      }
+      navigate(path);
+    },
+    [isAuthenticated, navigate],
+  );
+
+  const closeAuthModal = useCallback(() => {
+    setAuthModalOpen(false);
+  }, []);
+
+  // ===== EFFECTS =====
   useEffect(() => {
     if (doctors.length > 0) {
       void fetchDoctorsWithSchedule();
     }
   }, [doctors.length, fetchDoctorsWithSchedule]);
 
-  const filteredDoctorsWithSchedule = useMemo(() => {
-    const keyword = searchDoctor.trim().toLowerCase();
-    if (!keyword) {
-      return doctorsWithSchedule;
-    }
-
-    return doctorsWithSchedule.filter((doctor) =>
-      String(doctor.name || "")
-        .toLowerCase()
-        .includes(keyword),
-    );
-  }, [doctorsWithSchedule, searchDoctor]);
-
   return {
+    // Auth
+    authModalOpen,
+    authModalMode,
+    closeAuthModal,
+    handleNavigateWithAuth,
+    // Doctors
+    experiencedDoctors,
     doctorsWithSchedule,
     loadingDoctorsSchedule,
-    searchDoctor,
-    setSearchDoctor,
-    filteredDoctorsWithSchedule,
+    // Static content
+    features: HOME_FEATURES,
+    news: HOME_NEWS,
   };
 };
