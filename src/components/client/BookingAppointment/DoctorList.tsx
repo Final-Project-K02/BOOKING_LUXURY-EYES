@@ -20,7 +20,7 @@ const DoctorList = ({
       <div className="space-y-3">
         {isFetching && (
           <div className="absolute top-0 right-0 p-2 text-sm text-gray-500">
-            Updating...
+            Đang cập nhật
           </div>
         )}
 

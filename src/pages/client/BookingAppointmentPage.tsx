@@ -1,4 +1,8 @@
-import { SearchOutlined, UserOutlined } from "@ant-design/icons";
+import {
+  ReloadOutlined,
+  SearchOutlined,
+  UserOutlined,
+} from "@ant-design/icons";
 import { Button, Card, Input, Pagination } from "antd";
 import AddPatientModal from "../../components/client/BookingAppointment/AddPatientModal";
 import BookingFilterSidebar from "../../components/client/BookingAppointment/BookingFilterSidebar";
@@ -59,6 +63,15 @@ const BookingAppointmentPage = () => {
                   </Button>
                   <Button size="large" onClick={booking.handleReset}>
                     Xóa bộ lọc
+                  </Button>
+                  <Button
+                    size="large"
+                    icon={<ReloadOutlined />}
+                    loading={booking.isFetching}
+                    disabled={booking.isFetching}
+                    onClick={booking.refetchDoctors}
+                  >
+                    Làm mới dữ liệu
                   </Button>
                 </div>
               </div>

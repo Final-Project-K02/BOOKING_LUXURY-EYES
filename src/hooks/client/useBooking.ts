@@ -75,6 +75,7 @@ export const useBooking = () => {
     isLoading,
     isFetching,
     isError,
+    refetch: refetchDoctors,
   } = useGetDoctorsQuery({
     inputSearch: delaySearch,
     scheduleDateFrom: fromDate || undefined,
@@ -414,6 +415,7 @@ export const useBooking = () => {
     isLoading,
     isFetching,
     isError,
+    refetchDoctors,
     handleReset,
     handleRangeChange,
     disabledDate,
