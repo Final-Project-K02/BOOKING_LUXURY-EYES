@@ -1,41 +1,79 @@
-import type { AxiosError } from "axios";
-import api from "../../api";
-import type { LoginPayload } from "../../types/User";
+import { createApi } from "@reduxjs/toolkit/query/react";
+import { createBaseQuery } from "./baseQuery";
+import type { LoginPayload, User } from "../../types/User";
 import type { ForgotPasswordPayload } from "../../types/Auth";
-import type { ApiErrorResponse } from "../../types/ApiResponse";
+import type { ApiResponse } from "../../types/ApiResponse";
 
 const PASSWORD_REGEX =
   /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&.])[A-Za-z\d@$!%*?&.]+$/;
 
-export const authService = {
-  register: async (payload: {
-    fullName: string;
-    email: string;
-    password: string;
-  }) => {
-    return api.post("/auth/register", payload);
-  },
+interface RegisterPayload {
+  fullName: string;
+  email: string;
+  password: string;
+}
 
-  login: async (payload: LoginPayload) => {
-    return api.post("/auth/login", payload);
-  },
+interface ResetPasswordPayload {
+  token: string;
+  newPassword: string;
+}
 
-  forgotPassword: async (payload: ForgotPasswordPayload) => {
-    return api.post("/auth/send-forgot", payload);
-  },
+export interface LoginResponse {
+  user: User;
+  accessToken: string;
+}
 
-  resetPassword: async (payload: { token: string; newPassword: string }) => {
-    return api.post("/auth/forgot-password", payload);
-  },
+export const authApi = createApi({
+  reducerPath: "authApi",
+  baseQuery: createBaseQuery(),
+  endpoints: (builder) => ({
+    register: builder.mutation<ApiResponse<null>, RegisterPayload>({
+      query: (payload) => ({
+        url: "/auth/register",
+        method: "POST",
+        body: payload,
+      }),
+    }),
 
-  logout: async () => {
-    return api.post("/auth/logout");
-  },
-};
+    login: builder.mutation<ApiResponse<LoginResponse>, LoginPayload>({
+      query: (payload) => ({
+        url: "/auth/login",
+        method: "POST",
+        body: payload,
+      }),
+    }),
 
-export const handleAuthError = (error: unknown): string => {
-  const err = error as AxiosError<ApiErrorResponse>;
-  return err.response?.data?.message || "Có lỗi xảy ra, vui lòng thử lại";
-};
+    forgotPassword: builder.mutation<ApiResponse<null>, ForgotPasswordPayload>({
+      query: (payload) => ({
+        url: "/auth/send-forgot",
+        method: "POST",
+        body: payload,
+      }),
+    }),
+
+    resetPassword: builder.mutation<ApiResponse<null>, ResetPasswordPayload>({
+      query: (payload) => ({
+        url: "/auth/forgot-password",
+        method: "POST",
+        body: payload,
+      }),
+    }),
+
+    logout: builder.mutation<ApiResponse<null>, void>({
+      query: () => ({
+        url: "/auth/logout",
+        method: "POST",
+      }),
+    }),
+  }),
+});
+
+export const {
+  useRegisterMutation,
+  useLoginMutation,
+  useForgotPasswordMutation,
+  useResetPasswordMutation,
+  useLogoutMutation,
+} = authApi;
 
 export { PASSWORD_REGEX };
