@@ -69,7 +69,7 @@ const BookingAppointmentPage = () => {
                     icon={<ReloadOutlined />}
                     loading={booking.isFetching}
                     disabled={booking.isFetching}
-                    onClick={booking.refetchDoctors}
+                    onClick={booking.handleRefreshAll}
                   >
                     Làm mới dữ liệu
                   </Button>

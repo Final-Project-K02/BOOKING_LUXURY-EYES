@@ -24,11 +24,16 @@ export const doctorApi = createApi({
       query: (params) => {
         const searchParams = new URLSearchParams();
 
-        if (params?.inputSearch) searchParams.set("keyword", params.inputSearch);
-        if (params?.scheduleDateFrom) searchParams.set("scheduleDateFrom", params.scheduleDateFrom);
-        if (params?.scheduleDateTo) searchParams.set("scheduleDateTo", params.scheduleDateTo);
-        if (typeof params?.page === "number") searchParams.set("page", String(params.page));
-        if (typeof params?.limit === "number") searchParams.set("limit", String(params.limit));
+        if (params?.inputSearch)
+          searchParams.set("keyword", params.inputSearch);
+        if (params?.scheduleDateFrom)
+          searchParams.set("scheduleDateFrom", params.scheduleDateFrom);
+        if (params?.scheduleDateTo)
+          searchParams.set("scheduleDateTo", params.scheduleDateTo);
+        if (typeof params?.page === "number")
+          searchParams.set("page", String(params.page));
+        if (typeof params?.limit === "number")
+          searchParams.set("limit", String(params.limit));
 
         const queryString = searchParams.toString();
         return queryString ? `doctors?${queryString}` : "doctors";
@@ -41,9 +46,12 @@ export const doctorApi = createApi({
         const searchParams = new URLSearchParams();
 
         if (params?.keyword) searchParams.set("keyword", params.keyword);
-        if (typeof params?.minPrice === "number") searchParams.set("minPrice", String(params.minPrice));
-        if (typeof params?.maxPrice === "number") searchParams.set("maxPrice", String(params.maxPrice));
-        if (typeof params?.experience_year === "number") searchParams.set("experience_year", String(params.experience_year));
+        if (typeof params?.minPrice === "number")
+          searchParams.set("minPrice", String(params.minPrice));
+        if (typeof params?.maxPrice === "number")
+          searchParams.set("maxPrice", String(params.maxPrice));
+        if (typeof params?.experience_year === "number")
+          searchParams.set("experience_year", String(params.experience_year));
 
         const queryString = searchParams.toString();
         return queryString ? `doctors/admin?${queryString}` : "doctors/admin";
@@ -51,7 +59,10 @@ export const doctorApi = createApi({
       providesTags: ["Doctors"],
     }),
 
-    createDoctor: builder.mutation<{ message: string; data: Doctor }, DoctorFormValues>({
+    createDoctor: builder.mutation<
+      { message: string; data: Doctor },
+      DoctorFormValues
+    >({
       query: (body) => ({ url: "/doctors", method: "POST", body }),
       invalidatesTags: ["Doctors"],
     }),
@@ -60,7 +71,11 @@ export const doctorApi = createApi({
       { message: string; data: Doctor },
       { id: string } & DoctorFormValues
     >({
-      query: ({ id, ...body }) => ({ url: `/doctors/${id}`, method: "PUT", body }),
+      query: ({ id, ...body }) => ({
+        url: `/doctors/${id}`,
+        method: "PUT",
+        body,
+      }),
       invalidatesTags: ["Doctors"],
     }),
 

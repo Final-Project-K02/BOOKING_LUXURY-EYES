@@ -90,14 +90,12 @@ export const useBooking = () => {
     [patientProfileResponse?.data],
   );
 
-  const { data: schedule } = useGetScheduleDoctorIdQuery(
-    selectedDoctor?._id as string,
-    {
+  const { data: schedule, refetch: refetchSchedule } =
+    useGetScheduleDoctorIdQuery(selectedDoctor?._id as string, {
       skip: !selectedDoctor?._id,
       refetchOnFocus: true,
       refetchOnReconnect: true,
-    },
-  );
+    });
   const scheduleItem = useMemo(
     () =>
       (schedule?.data ?? []).find(
@@ -184,6 +182,13 @@ export const useBooking = () => {
     setSelectedDate(null);
     setSelectedSlot(null);
     setSelectedSchedule(null);
+  };
+
+  const handleRefreshAll = async () => {
+    await refetchDoctors();
+    if (selectedDoctor?._id) {
+      await refetchSchedule();
+    }
   };
 
   const handleRangeChange = (dates: (Dayjs | null)[] | null) => {
@@ -416,6 +421,7 @@ export const useBooking = () => {
     isFetching,
     isError,
     refetchDoctors,
+    handleRefreshAll,
     handleReset,
     handleRangeChange,
     disabledDate,

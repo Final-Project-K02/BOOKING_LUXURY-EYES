@@ -30,7 +30,11 @@ const useDoctorManagement = () => {
   const [form] = Form.useForm<DoctorFormValues>();
 
   // ===== RTK QUERY =====
-  const { data, isFetching: loading, refetch } = useGetDoctorsByAdminQuery(filters, {
+  const {
+    data,
+    isFetching: loading,
+    refetch,
+  } = useGetDoctorsByAdminQuery(filters, {
     refetchOnFocus: true,
     refetchOnReconnect: true,
   });
