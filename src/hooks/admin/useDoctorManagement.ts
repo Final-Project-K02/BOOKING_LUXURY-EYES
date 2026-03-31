@@ -1,7 +1,14 @@
 import type { UploadProps } from "antd";
 import { Form, message, Upload } from "antd";
-import { useEffect, useState } from "react";
-import api from "../../api";
+import { useState } from "react";
+import {
+  useCreateDoctorMutation,
+  useDeleteDoctorMutation,
+  useGetDoctorsByAdminQuery,
+  useToggleDoctorStatusMutation,
+  useUpdateDoctorMutation,
+} from "../../app/services/doctorApi";
+import { useUploadImageMutation } from "../../app/services/uploadApi";
 import {
   AVATAR_MAX_SIZE_BYTES,
   AVATAR_UPLOAD_FOLDER,
@@ -15,8 +22,6 @@ import { getPriceByExperience } from "../../utils/DoctorManagement/doctorUtils";
 
 const useDoctorManagement = () => {
   // ===== STATE =====
-  const [doctors, setDoctors] = useState<Doctor[]>([]);
-  const [loading, setLoading] = useState(false);
   const [openModal, setOpenModal] = useState(false);
   const [editingDoctor, setEditingDoctor] = useState<Doctor | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -24,26 +29,25 @@ const useDoctorManagement = () => {
 
   const [form] = Form.useForm<DoctorFormValues>();
 
-  // ===== FETCH =====
-  const fetchDoctors = async () => {
-    try {
-      setLoading(true);
-      const res = await api.get<{ data: Doctor[] }>("/doctors/admin", {
-        params: filters,
-      });
-      setDoctors(res.data.data ?? []);
-    } catch {
-      message.error("Không thể tải danh sách bác sĩ");
-    } finally {
-      setLoading(false);
-    }
-  };
+  // ===== RTK QUERY =====
+  const {
+    data,
+    isFetching: loading,
+    refetch,
+  } = useGetDoctorsByAdminQuery(filters, {
+    refetchOnFocus: true,
+    refetchOnReconnect: true,
+  });
+  const doctors = data?.data ?? [];
 
-  // ===== EFFECTS =====
-  useEffect(() => {
-    fetchDoctors();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters]);
+  const [createDoctor] = useCreateDoctorMutation();
+  const [updateDoctor] = useUpdateDoctorMutation();
+  const [deleteDoctor] = useDeleteDoctorMutation();
+  const [toggleDoctorStatus] = useToggleDoctorStatusMutation();
+  const [uploadImage] = useUploadImageMutation();
+
+  // ===== FETCH =====
+  const fetchDoctors = () => refetch();
 
   // ===== ACTIONS =====
   const handleOpenAdd = () => {
@@ -80,14 +84,13 @@ const useDoctorManagement = () => {
 
     try {
       if (editingDoctor) {
-        await api.put(`/doctors/${editingDoctor._id}`, payload);
+        await updateDoctor({ id: editingDoctor._id, ...payload }).unwrap();
         message.success("Cập nhật bác sĩ thành công");
       } else {
-        await api.post("/doctors", payload);
+        await createDoctor(payload).unwrap();
         message.success("Thêm bác sĩ thành công");
       }
       handleCloseModal();
-      fetchDoctors();
     } catch {
       message.error("Thao tác thất bại");
     }
@@ -95,9 +98,8 @@ const useDoctorManagement = () => {
 
   const handleDelete = async (id: string) => {
     try {
-      await api.delete(`/doctors/${id}`);
+      await deleteDoctor(id).unwrap();
       message.success("Xoá bác sĩ thành công");
-      fetchDoctors();
     } catch {
       message.error("Xoá thất bại");
     }
@@ -105,11 +107,10 @@ const useDoctorManagement = () => {
 
   const handleToggleStatus = async (doctor: Doctor) => {
     try {
-      await api.patch(`/doctors/${doctor._id}/status`);
+      await toggleDoctorStatus(doctor._id).unwrap();
       message.success(
         doctor.is_active ? "Tắt bác sĩ thành công" : "Bật bác sĩ thành công",
       );
-      fetchDoctors();
     } catch {
       message.error("Bác sĩ có lịch khám sắp tới , không thể tắt");
     }
@@ -124,16 +125,6 @@ const useDoctorManagement = () => {
   };
 
   // ===== AVATAR UPLOAD =====
-  const uploadDoctorAvatar = async (file: File): Promise<string> => {
-    const formData = new FormData();
-    formData.append("image", file);
-    formData.append("folder", AVATAR_UPLOAD_FOLDER);
-    const res = await api.post("/uploads/image", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-    return res.data?.data?.url as string;
-  };
-
   const uploadProps: UploadProps = {
     accept: "image/*",
     showUploadList: false,
@@ -144,7 +135,11 @@ const useDoctorManagement = () => {
           message.error("Ảnh quá lớn (tối đa 5MB)");
           return Upload.LIST_IGNORE;
         }
-        const url = await uploadDoctorAvatar(file as File);
+        const result = await uploadImage({
+          file: file as File,
+          folder: AVATAR_UPLOAD_FOLDER,
+        }).unwrap();
+        const url = result?.data?.url;
         if (!url) {
           message.error("Upload thất bại: không nhận được url");
           return Upload.LIST_IGNORE;
@@ -152,8 +147,8 @@ const useDoctorManagement = () => {
         form.setFieldValue("avatar", url);
         message.success("Upload avatar thành công");
       } catch (err) {
-        const axiosErr = err as { response?: { data?: { message?: string } } };
-        message.error(axiosErr?.response?.data?.message || "Upload thất bại");
+        const apiErr = err as { data?: { message?: string } };
+        message.error(apiErr?.data?.message || "Upload thất bại");
       } finally {
         setUploadingAvatar(false);
       }

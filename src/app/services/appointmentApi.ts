@@ -10,7 +10,12 @@ export const appointmentApi = createApi({
   reducerPath: "appointmentApi",
   baseQuery: createBaseQuery(),
 
-  tagTypes: ["Appointments", "AppointmentScheduleId", "ScheduleId"],
+  tagTypes: [
+    "Appointments",
+    "AppointmentScheduleId",
+    "ScheduleId",
+    "AdminAppointments",
+  ],
   endpoints: (builder) => ({
     getAppointments: builder.query<BookingResponse, string>({
       query: (userId) => `appointments?userId=${userId}`,
@@ -59,6 +64,7 @@ export const appointmentApi = createApi({
 
       invalidatesTags: (_r, _e, arg) => [
         "Appointments",
+        "AdminAppointments",
         { type: "AppointmentScheduleId", id: arg.scheduleId },
         { type: "ScheduleId", id: arg.doctor.id },
       ],
@@ -112,6 +118,31 @@ export const appointmentApi = createApi({
         { type: "AppointmentScheduleId", id: arg.scheduleId },
       ],
     }),
+
+    getAdminAppointments: builder.query<
+      { data: Appointment[] },
+      Record<string, string> | void
+    >({
+      query: (params) => {
+        const queryString = params
+          ? new URLSearchParams(params).toString()
+          : "";
+        return queryString ? `appointments?${queryString}` : "appointments";
+      },
+      providesTags: ["AdminAppointments"],
+    }),
+
+    updateAppointment: builder.mutation<
+      { message: string; data: Appointment },
+      { id: string; status?: string; reason?: string; paymentStatus?: string }
+    >({
+      query: ({ id, ...body }) => ({
+        url: `appointments/${id}`,
+        method: "PATCH",
+        body,
+      }),
+      invalidatesTags: ["AdminAppointments"],
+    }),
   }),
 });
 
@@ -124,4 +155,7 @@ export const {
   useCreateVnpayLinkMutation,
   useCancelAppointmentMutation,
   useCancelAppointmentConfirmMutation,
+  useGetAdminAppointmentsQuery,
+  useLazyGetAdminAppointmentsQuery,
+  useUpdateAppointmentMutation,
 } = appointmentApi;

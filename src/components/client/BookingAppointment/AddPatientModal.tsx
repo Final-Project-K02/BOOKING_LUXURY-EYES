@@ -108,16 +108,31 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({
           <Form.Item
             name="fullName"
             label="Họ và tên"
-            normalize={(value) => value?.trim()}
             rules={[
               { required: true, message: "Vui lòng nhập họ và tên" },
-              { min: 3, message: "Tối thiểu phải có 3 ký tự" },
+              {
+                validator(_, value) {
+                  if (!value) {
+                    return Promise.resolve();
+                  }
+                  const trimmed = value.trim();
+                  if (trimmed.length < 3) {
+                    return Promise.reject(
+                      new Error("Tối thiểu phải có 3 ký tự"),
+                    );
+                  }
+                  return Promise.resolve();
+                },
+              },
             ]}
           >
             <Input
               size="large"
               placeholder="Nguyễn Văn A (bắt buộc)"
               prefix={<UserOutlined />}
+              onBlur={(e) => {
+                e.target.value = e.target.value.trim();
+              }}
             />
           </Form.Item>
 

@@ -43,7 +43,7 @@ interface Props {
   onClose: () => void;
   onDoctorChange: (doctorId: string) => void;
   onAddTimeSlot: () => void;
-  onRemoveSlot: (index: number) => void;
+  onRemoveSlot: (key: string) => void;
   onSubmit: (values: FormValues) => Promise<void>;
 }
 
@@ -97,12 +97,12 @@ const ScheduleFormModal = ({
     {
       title: "",
       width: 50,
-      render: (_, slot, index) => (
+      render: (_, slot) => (
         <Button
           type="text"
           danger
           icon={<DeleteOutlined />}
-          onClick={() => onRemoveSlot(index)}
+          onClick={() => onRemoveSlot(slot.date + slot.time)}
           disabled={isBookedLikeStatus(slot.status)}
           title={
             isBookedLikeStatus(slot.status)

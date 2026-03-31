@@ -2,7 +2,10 @@ import { message } from "antd";
 import dayjs from "dayjs";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../../api";
+import { useLazyGetAdminAppointmentsQuery } from "../../app/services/appointmentApi";
+import { useLazyGetDoctorsByAdminQuery } from "../../app/services/doctorApi";
+import { useLazyGetPatientProfileQuery } from "../../app/services/patientProfile";
+import { useLazyGetScheduleDoctorIdQuery } from "../../app/services/scheduleApi";
 import { DOCTOR_FETCH_LIMIT } from "../../constants/admin/dashboardContants";
 import type {
   AppointmentApi,
@@ -10,7 +13,6 @@ import type {
   DoctorApi,
   DoctorWithSchedule,
   ProgressStats,
-  ScheduleApi,
   TableAppointment,
   UpcomingAppointment,
 } from "../../types/Dashboard";
@@ -41,6 +43,13 @@ const DEFAULT_PROGRESS: ProgressStats = {
 export const useDashboard = () => {
   const nav = useNavigate();
 
+  // ===== RTK QUERY LAZY TRIGGERS =====
+
+  const [triggerAppointments] = useLazyGetAdminAppointmentsQuery();
+  const [triggerDoctors] = useLazyGetDoctorsByAdminQuery();
+  const [triggerPatients] = useLazyGetPatientProfileQuery();
+  const [triggerSchedules] = useLazyGetScheduleDoctorIdQuery();
+
   // ===== STATE =====
 
   const [stats, setStats] = useState<DashboardStats>(DEFAULT_STATS);
@@ -55,13 +64,6 @@ export const useDashboard = () => {
   const [searchDoctor, setSearchDoctor] = useState("");
 
   // ===== FETCH =====
-
-  const fetchSchedulesByDoctor = async (
-    doctorId: string,
-  ): Promise<ScheduleApi[]> => {
-    const res = await api.get("/schedules", { params: { doctorId } });
-    return (res.data?.data ?? []) as ScheduleApi[];
-  };
 
   const fetchDoctorsWithSchedule = async (doctorsData: DoctorApi[]) => {
     try {
@@ -85,7 +87,8 @@ export const useDashboard = () => {
           };
 
           try {
-            const schedules = await fetchSchedulesByDoctor(doc._id);
+            const scheduleRes = await triggerSchedules(doc._id).unwrap();
+            const schedules = scheduleRes.data ?? [];
 
             const futureSlots: Array<{ time: string; date: string }> = [];
             schedules.forEach((s) => {
@@ -127,14 +130,14 @@ export const useDashboard = () => {
   const fetchDashboard = async () => {
     try {
       const [appointmentRes, doctorRes, patientRes] = await Promise.all([
-        api.get("/appointments"),
-        api.get("/doctors"),
-        api.get("/patient-profile"),
+        triggerAppointments().unwrap(),
+        triggerDoctors().unwrap(),
+        triggerPatients().unwrap(),
       ]);
 
-      const appointmentsData: AppointmentApi[] = appointmentRes.data.data || [];
-      const doctorsData: DoctorApi[] = doctorRes.data.data || [];
-      const patientsData = patientRes.data.data || [];
+      const appointmentsData = (appointmentRes.data || []) as AppointmentApi[];
+      const doctorsData = (doctorRes.data || []) as DoctorApi[];
+      const patientsData = patientRes.data || [];
 
       const today = dayjs().format("YYYY-MM-DD");
 

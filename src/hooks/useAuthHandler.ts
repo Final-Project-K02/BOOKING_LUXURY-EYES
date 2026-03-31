@@ -2,7 +2,14 @@ import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { message } from "antd";
 import type { LoginPayload, User } from "../types/User";
-import { authService, handleAuthError } from "../app/services/authApi";
+import {
+  useRegisterMutation,
+  useLoginMutation,
+  useForgotPasswordMutation,
+  useResetPasswordMutation,
+  useLogoutMutation,
+  PASSWORD_REGEX,
+} from "../app/services/authApi";
 import { setAuth, logout as logoutAction } from "../app/features/authSlice";
 import type { ForgotPasswordPayload } from "../types/Auth";
 
@@ -10,19 +17,24 @@ export const useAuthHandler = () => {
   const nav = useNavigate();
   const dispatch = useDispatch();
 
+  const [registerMutation] = useRegisterMutation();
+  const [loginMutation] = useLoginMutation();
+  const [forgotPasswordMutation] = useForgotPasswordMutation();
+  const [resetPasswordMutation] = useResetPasswordMutation();
+  const [logoutMutation] = useLogoutMutation();
+
   const handleRegister = async (values: User): Promise<boolean> => {
     try {
-      const payload = {
+      await registerMutation({
         fullName: values.fullName,
         email: values.email,
-        password: values.password!, // Password is required in form, so it exists
-      };
-      await authService.register(payload);
+        password: values.password!,
+      }).unwrap();
       message.success("Đăng ký thành công");
       return true;
     } catch (error) {
-      const errorMessage = handleAuthError(error);
-      message.error(errorMessage);
+      const err = error as { data?: { message?: string } };
+      message.error(err.data?.message || "Có lỗi xảy ra, vui lòng thử lại");
       console.error("Register Error:", error);
       return false;
     }
@@ -30,12 +42,13 @@ export const useAuthHandler = () => {
 
   const handleLogin = async (values: LoginPayload): Promise<boolean> => {
     try {
-      const res = await authService.login({
+      const res = await loginMutation({
         email: values.email,
         password: values.password,
-      });
-      // Xử lý response không có `success` field
-      const data = res.data.data || res.data;
+      }).unwrap();
+
+      const data =
+        res.data || (res as unknown as { user: User; accessToken: string });
       const { user, accessToken } = data;
 
       if (!user || !accessToken) {
@@ -56,8 +69,8 @@ export const useAuthHandler = () => {
       message.success("Đăng nhập thành công!");
       return true;
     } catch (error) {
-      const errorMessage = handleAuthError(error);
-      message.error(errorMessage);
+      const err = error as { data?: { message?: string } };
+      message.error(err.data?.message || "Có lỗi xảy ra, vui lòng thử lại");
       console.error("Login Error:", error);
       return false;
     }
@@ -67,14 +80,12 @@ export const useAuthHandler = () => {
     values: ForgotPasswordPayload,
   ): Promise<boolean> => {
     try {
-      await authService.forgotPassword({
-        email: values.email,
-      });
+      await forgotPasswordMutation({ email: values.email }).unwrap();
       message.success("Link reset mật khẩu đã được gửi đến email của bạn");
       return true;
     } catch (error) {
-      const errorMessage = handleAuthError(error);
-      message.error(errorMessage);
+      const err = error as { data?: { message?: string } };
+      message.error(err.data?.message || "Có lỗi xảy ra, vui lòng thử lại");
       console.error("Forgot Password Error:", error);
       return false;
     }
@@ -85,15 +96,15 @@ export const useAuthHandler = () => {
     password: string;
   }): Promise<boolean> => {
     try {
-      await authService.resetPassword({
+      await resetPasswordMutation({
         token: payload.token,
         newPassword: payload.password,
-      });
+      }).unwrap();
       message.success("Mật khẩu đã được reset thành công");
       return true;
     } catch (error) {
-      const errorMessage = handleAuthError(error);
-      message.error(errorMessage);
+      const err = error as { data?: { message?: string } };
+      message.error(err.data?.message || "Có lỗi xảy ra, vui lòng thử lại");
       console.error("Reset Password Error:", error);
       return false;
     }
@@ -105,7 +116,7 @@ export const useAuthHandler = () => {
     messageText?: string;
   }): Promise<void> => {
     try {
-      await authService.logout();
+      await logoutMutation().unwrap();
     } catch {
       // Still clear client state even if server logout fails.
     } finally {
@@ -129,3 +140,5 @@ export const useAuthHandler = () => {
     handleLogout,
   };
 };
+
+export { PASSWORD_REGEX };

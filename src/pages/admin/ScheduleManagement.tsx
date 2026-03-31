@@ -55,7 +55,7 @@ const ScheduleManagement = () => {
         onClose={() => setOpen(false)}
         onDoctorChange={handleDoctorChange}
         onAddTimeSlot={addTimeSlot}
-        onRemoveSlot={removeTempSlot}
+        onRemoveSlot={(key) => removeTempSlot(key)}
         onSubmit={handleSubmit}
       />
     </>

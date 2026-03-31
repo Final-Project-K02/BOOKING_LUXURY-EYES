@@ -1,12 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Modal, message } from "antd";
 import { useSearchParams } from "react-router-dom";
 import dayjs from "dayjs";
 import type { Dayjs } from "dayjs";
 
-import api from "../../api";
 import type { Appointment, AppointmentStatus } from "../../types/Booking";
-import type { Doctor } from "../../types/Doctor";
 import {
   STATUS_MAP,
   PAYMENT_STATUS_MAP,
@@ -19,6 +17,12 @@ import {
   buildCanceledReason,
   toArrayQueryValue,
 } from "../../utils/AppointmentManagement/appointmentAdminHelpers";
+import {
+  useGetAdminAppointmentsQuery,
+  useLazyGetAppointmentDetailQuery,
+  useUpdateAppointmentMutation,
+} from "../../app/services/appointmentApi";
+import { useGetDoctorsByAdminQuery } from "../../app/services/doctorApi";
 
 // ===== TYPES =====
 
@@ -36,12 +40,6 @@ export const useAppointmentManagement = () => {
   // ===== STATE =====
 
   const [searchParams, setSearchParams] = useSearchParams();
-
-  // Data
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [doctors, setDoctors] = useState<Doctor[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [detailLoading, setDetailLoading] = useState(false);
 
   // Filter
   const [dateRange, setDateRange] = useState<
@@ -71,45 +69,57 @@ export const useAppointmentManagement = () => {
   );
   const [submittingCancel, setSubmittingCancel] = useState(false);
 
-  // ===== FETCH =====
+  // ===== RTK QUERY =====
 
-  const fetchAppointments = async (params?: Record<string, string>) => {
-    try {
-      setLoading(true);
-      const res = await api.get<{ data: Appointment[] }>("/appointments", {
-        params,
-      });
-      setAppointments(res.data.data ?? []);
-    } catch {
-      message.error("Không thể tải lịch hẹn");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const queryParams = useMemo((): Record<string, string> => {
+    const dateFrom = searchParams.get("dateFrom");
+    const dateTo = searchParams.get("dateTo");
+    const params: Record<string, string> = {};
 
-  const fetchDoctors = async () => {
-    try {
-      const res = await api.get<{ data: Doctor[] }>("/doctors/admin");
-      setDoctors(res.data.data ?? []);
-    } catch {
-      message.error("Không thể tải danh sách bác sĩ");
-    }
-  };
+    if (dateFrom) params.dateFrom = dateFrom;
+    if (dateTo) params.dateTo = dateTo;
 
-  const fetchAppointmentDetail = async (
-    id: string,
-  ): Promise<Appointment | null> => {
-    try {
-      setDetailLoading(true);
-      const res = await api.get<{ data: Appointment }>(`/appointments/${id}`);
-      return res.data.data;
-    } catch {
-      message.error("Không thể tải chi tiết lịch hẹn");
-      return null;
-    } finally {
-      setDetailLoading(false);
-    }
-  };
+    const statusSet = new Set<string>(FILTERABLE_STATUSES);
+    const paymentStatusSet = new Set(Object.keys(PAYMENT_STATUS_MAP));
+
+    const statuses = toArrayQueryValue(searchParams.get("status")).filter((v) =>
+      statusSet.has(v),
+    );
+    if (statuses.length > 0) params.status = statuses.join(",");
+
+    const paymentStatuses = toArrayQueryValue(
+      searchParams.get("paymentStatus"),
+    ).filter((v) => paymentStatusSet.has(v));
+    if (paymentStatuses.length > 0)
+      params.paymentStatus = paymentStatuses.join(",");
+
+    const doctorId = searchParams.get("doctorId");
+    if (doctorId) params.doctorId = doctorId;
+
+    const patientKeyword = searchParams.get("patientKeyword");
+    if (patientKeyword?.trim()) params.patientKeyword = patientKeyword.trim();
+
+    return params;
+  }, [searchParams]);
+
+  const {
+    data: appointmentsData,
+    isFetching: loading,
+    refetch: refetchAppointments,
+  } = useGetAdminAppointmentsQuery(queryParams, {
+    refetchOnFocus: true,
+    refetchOnReconnect: true,
+  });
+
+  const [fetchAppointmentDetail, { isFetching: detailLoading }] =
+    useLazyGetAppointmentDetailQuery();
+
+  const { data: doctorsData } = useGetDoctorsByAdminQuery();
+
+  const [updateAppointment] = useUpdateAppointmentMutation();
+
+  const appointments = appointmentsData?.data ?? [];
+  const doctors = doctorsData?.data ?? [];
 
   // ===== FILTER HELPERS =====
 
@@ -196,13 +206,13 @@ export const useAppointmentManagement = () => {
     paymentStatus?: string,
   ): Promise<boolean> => {
     try {
-      await api.patch(`/appointments/${id}`, {
+      await updateAppointment({
+        id,
         status,
         ...(reason ? { reason } : {}),
         ...(paymentStatus ? { paymentStatus } : {}),
-      });
+      }).unwrap();
       message.success("Cập nhật trạng thái thành công");
-      await fetchAppointments(buildFilterParams());
       return true;
     } catch {
       message.error("Cập nhật thất bại");
@@ -215,9 +225,8 @@ export const useAppointmentManagement = () => {
     paymentStatus: string,
   ): Promise<boolean> => {
     try {
-      await api.patch(`/appointments/${id}`, { paymentStatus });
+      await updateAppointment({ id, paymentStatus }).unwrap();
       message.success("Cập nhật trạng thái hoàn tiền thành công");
-      fetchAppointments(buildFilterParams());
       return true;
     } catch {
       message.error("Cập nhật trạng thái hoàn tiền thất bại");
@@ -229,8 +238,12 @@ export const useAppointmentManagement = () => {
     setSelectedAppointment(record);
     setDetailModalVisible(true);
     if (!record._id) return;
-    const detailData = await fetchAppointmentDetail(record._id);
-    if (detailData) setSelectedAppointment(detailData);
+    try {
+      const result = await fetchAppointmentDetail(record._id).unwrap();
+      if (result?.data) setSelectedAppointment(result.data);
+    } catch {
+      message.error("Không thể tải chi tiết lịch hẹn");
+    }
   };
 
   const handleCloseDetail = () => {
@@ -365,10 +378,7 @@ export const useAppointmentManagement = () => {
 
   // ===== EFFECTS =====
 
-  useEffect(() => {
-    fetchDoctors();
-  }, []);
-
+  // Sync local filter UI state from URL params
   useEffect(() => {
     const filtersFromUrl = getFiltersFromSearchParams();
     setDateRange(filtersFromUrl.dateRange);
@@ -376,7 +386,6 @@ export const useAppointmentManagement = () => {
     setPaymentStatusFilters(filtersFromUrl.paymentStatusFilters);
     setDoctorFilter(filtersFromUrl.doctorFilter);
     setPatientKeyword(filtersFromUrl.patientKeyword);
-    fetchAppointments(buildFilterParams(filtersFromUrl));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
@@ -425,6 +434,6 @@ export const useAppointmentManagement = () => {
     confirmUpdatePaymentStatus,
 
     // Reload with current filters
-    reload: () => fetchAppointments(buildFilterParams()),
+    reload: refetchAppointments,
   };
 };

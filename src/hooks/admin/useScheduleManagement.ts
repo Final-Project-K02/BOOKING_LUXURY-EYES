@@ -1,7 +1,13 @@
 import { Form, message } from "antd";
 import dayjs, { Dayjs } from "dayjs";
-import { useEffect, useMemo, useState } from "react";
-import api from "../../api";
+import { useMemo, useState } from "react";
+import { useGetDoctorsQuery } from "../../app/services/doctorApi";
+import {
+  useCreateScheduleMutation,
+  useDeleteScheduleMutation,
+  useGetSchedulesQuery,
+  useUpdateScheduleMutation,
+} from "../../app/services/scheduleApi";
 import type { Doctor } from "../../types/Doctor";
 import type {
   AdminTimeSlot,
@@ -37,16 +43,29 @@ type FormValues = ScheduleFormValues;
 
 export const useScheduleManagement = () => {
   // ===== STATE =====
-  const [schedules, setSchedules] = useState<Schedule[]>([]);
-  const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [open, setOpen] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
-  const [loading, setLoading] = useState(false);
   const [scheduleViewMode, setScheduleViewMode] = useState<"upcoming" | "past">(
     "upcoming",
   );
   const [tempTimeSlots, setTempTimeSlots] = useState<TimeSlot[]>([]);
   const [form] = Form.useForm<FormValues>();
+
+  // ===== RTK QUERY =====
+  const { data: schedulesData, isLoading: loading } = useGetSchedulesQuery();
+  const { data: doctorsData } = useGetDoctorsQuery();
+  const [createSchedule] = useCreateScheduleMutation();
+  const [updateSchedule] = useUpdateScheduleMutation();
+  const [deleteSchedule] = useDeleteScheduleMutation();
+
+  const schedules = useMemo(
+    () => (schedulesData?.data ?? []) as Schedule[],
+    [schedulesData],
+  );
+  const doctors = useMemo(
+    () => (doctorsData?.data ?? []) as Doctor[],
+    [doctorsData],
+  );
 
   const selectedDoctorId = Form.useWatch("doctorId", form);
   const selectedDate = Form.useWatch("date", form);
@@ -124,36 +143,6 @@ export const useScheduleManagement = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [schedules, scheduleViewMode, todayStart],
   );
-
-  // ===== FETCH =====
-
-  const fetchDoctors = async () => {
-    try {
-      const res = await api.get<{ data: Doctor[] }>("/doctors");
-      setDoctors(res.data.data || []);
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const fetchSchedules = async () => {
-    try {
-      setLoading(true);
-      const res = await api.get<{ data: Schedule[] }>("/schedules");
-      setSchedules(res.data.data || []);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ===== EFFECTS =====
-
-  useEffect(() => {
-    fetchDoctors();
-    fetchSchedules();
-  }, []);
 
   // ===== ACTIONS =====
 
@@ -244,17 +233,13 @@ export const useScheduleManagement = () => {
     form.setFieldsValue({ times: undefined });
   };
 
-  const removeTempSlot = (index: number) => {
-    const slot = tempTimeSlots[index];
+  const removeTempSlot = (key: string) => {
+    const slot = tempTimeSlots.find((s) => s.date + s.time === key);
     if (slot && isBookedLikeStatus(slot.status)) {
       message.warning("Không thể xóa slot đã được đặt");
       return;
     }
-    setTempTimeSlots((prev) => {
-      const next = [...prev];
-      next.splice(index, 1);
-      return next;
-    });
+    setTempTimeSlots((prev) => prev.filter((s) => s.date + s.time !== key));
   };
 
   const handleSubmit = async (values: FormValues) => {
@@ -302,7 +287,7 @@ export const useScheduleManagement = () => {
 
     try {
       if (editingSchedule) {
-        await api.put(`/schedules/${editingSchedule._id}`, payload);
+        await updateSchedule({ id: editingSchedule._id, ...payload }).unwrap();
         message.success("Cập nhật lịch thành công");
       } else {
         const alreadyHasSchedule = schedules.find(
@@ -314,7 +299,7 @@ export const useScheduleManagement = () => {
           );
           return;
         }
-        await api.post("/schedules", payload);
+        await createSchedule(payload).unwrap();
         message.success("Tạo lịch thành công");
       }
 
@@ -322,24 +307,23 @@ export const useScheduleManagement = () => {
       setEditingSchedule(null);
       setTempTimeSlots([]);
       form.resetFields();
-      fetchSchedules();
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } };
+      const err = error as { data?: { message?: string }; message?: string };
       message.error(
-        err?.response?.data?.message || "Có lỗi xảy ra khi lưu lịch!",
+        err?.data?.message || err?.message || "Có lỗi xảy ra khi lưu lịch!",
       );
     }
   };
 
   const handleDeleteSchedule = async (id: string) => {
     try {
-      await api.delete(`/schedules/${id}`);
+      await deleteSchedule(id).unwrap();
       message.success("Xóa lịch thành công");
-      fetchSchedules();
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } };
+      const err = error as { data?: { message?: string }; message?: string };
       message.error(
-        err?.response?.data?.message ||
+        err?.data?.message ||
+          err?.message ||
           "Xóa thất bại. Có thể lịch này đã có người đặt.",
       );
     }
