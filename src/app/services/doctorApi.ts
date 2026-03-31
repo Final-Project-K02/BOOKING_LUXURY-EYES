@@ -105,7 +105,9 @@ export const doctorApi = createApi({
 
 export const {
   useGetDoctorsQuery,
+  useLazyGetDoctorsQuery,
   useGetDoctorsByAdminQuery,
+  useLazyGetDoctorsByAdminQuery,
   useCreateDoctorMutation,
   useUpdateDoctorMutation,
   useDeleteDoctorMutation,

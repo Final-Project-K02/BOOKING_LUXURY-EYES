@@ -55,6 +55,7 @@ export const scheduleApi = createApi({
 
 export const {
   useGetScheduleDoctorIdQuery,
+  useLazyGetScheduleDoctorIdQuery,
   useGetSchedulesQuery,
   useCreateScheduleMutation,
   useUpdateScheduleMutation,

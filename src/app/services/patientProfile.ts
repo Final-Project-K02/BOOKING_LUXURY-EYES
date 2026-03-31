@@ -57,6 +57,7 @@ export const patientProfileApi = createApi({
 
 export const {
   useGetPatientProfileQuery,
+  useLazyGetPatientProfileQuery,
   useGetPatientProfileByIdQuery,
   useCreatePatientProfileMutation,
   useUpdatePatientProfileMutation,
