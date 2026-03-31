@@ -2,9 +2,9 @@ import { message } from "antd";
 import dayjs from "dayjs";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../../api";
-import { useAppSelector } from "../../app/hook";
+import { useAppDispatch, useAppSelector } from "../../app/hook";
 import { useGetDoctorsQuery } from "../../app/services/doctorApi";
+import { scheduleApi } from "../../app/services/scheduleApi";
 import { HOME_FEATURES, HOME_NEWS } from "../../constants/client/HomeContants";
 import type { Doctor } from "../../types/Doctor";
 import type { DoctorWithSchedule, ScheduleApi } from "../../types/HomePage";
@@ -23,6 +23,7 @@ export const useHomePage = () => {
   // ===== FETCH =====
   const navigate = useNavigate();
   const authState = useAppSelector((state) => state.auth);
+  const dispatch = useAppDispatch();
   const { data: doctorsData } = useGetDoctorsQuery();
 
   const doctors = useMemo<Doctor[]>(
@@ -41,10 +42,15 @@ export const useHomePage = () => {
   );
   const isAuthenticated = authState.isAuthenticated || hasLocalSession;
 
-  const fetchSchedulesByDoctor = useCallback(async (doctorId: string) => {
-    const res = await api.get("/schedules", { params: { doctorId } });
-    return (res.data?.data ?? []) as ScheduleApi[];
-  }, []);
+  const fetchSchedulesByDoctor = useCallback(
+    async (doctorId: string) => {
+      const res = await dispatch(
+        scheduleApi.endpoints.getScheduleDoctorId.initiate(doctorId),
+      ).unwrap();
+      return (res.data ?? []) as ScheduleApi[];
+    },
+    [dispatch],
+  );
 
   const fetchDoctorsWithSchedule = useCallback(async () => {
     try {
@@ -140,7 +146,7 @@ export const useHomePage = () => {
     if (doctors.length > 0) {
       void fetchDoctorsWithSchedule();
     }
-  }, [doctors.length, fetchDoctorsWithSchedule]);
+  }, [doctors, fetchDoctorsWithSchedule]);
 
   return {
     // Auth
