@@ -1,20 +1,14 @@
 import { Avatar, Select, Switch, Table, Tag, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { useEffect, useState } from "react";
-import api from "../../api";
 import { useAppSelector } from "../../app/hook";
-
-type UserRole = "USER" | "DOCTOR" | "ADMIN";
-type UserStatus = "ACTIVE" | "BLOCKED";
-
-interface User {
-  _id: string;
-  fullName?: string;
-  email?: string;
-  role?: UserRole;
-  status?: UserStatus;
-  avatar?: string;
-}
+import {
+  useGetUsersQuery,
+  useUpdateUserRoleMutation,
+  useUpdateUserStatusMutation,
+  type AdminUser as User,
+  type UserRole,
+  type UserStatus,
+} from "../../app/services/userApi";
 
 const ROLE_MAP: Record<UserRole, { text: string; color: string }> = {
   USER: { text: "Người dùng", color: "blue" },
@@ -28,41 +22,25 @@ const STATUS_MAP: Record<UserStatus, { text: string; color: string }> = {
 };
 
 const UserManagement = () => {
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
+  const { data, isLoading } = useGetUsersQuery();
+  const [updateRole] = useUpdateUserRoleMutation();
+  const [updateStatus] = useUpdateUserStatusMutation();
+  const users: User[] = data?.data || [];
   const currentUserId = useAppSelector((state) => state.auth.user?._id);
 
-  const fetchUsers = async () => {
+  const handleUpdateRole = async (id: string, role: UserRole) => {
     try {
-      setLoading(true);
-      const res = await api.get("/users");
-      setUsers(res.data.data || []);
-    } catch {
-      message.error("Không thể tải danh sách người dùng");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const updateRole = async (id: string, role: UserRole) => {
-    try {
-      await api.put(`/users/${id}/role`, { role });
+      await updateRole({ id, role }).unwrap();
       message.success("Cập nhật vai trò thành công");
-      fetchUsers();
     } catch {
       message.error("Cập nhật vai trò thất bại");
     }
   };
 
-  const updateStatus = async (id: string, status: UserStatus) => {
+  const handleUpdateStatus = async (id: string, status: UserStatus) => {
     try {
-      await api.put(`/users/${id}/status`, { status });
+      await updateStatus({ id, status }).unwrap();
       message.success("Cập nhật trạng thái thành công");
-      fetchUsers();
     } catch {
       message.error("Cập nhật trạng thái thất bại");
     }
@@ -74,7 +52,7 @@ const UserManagement = () => {
       key: "user",
       render: (_, record) => (
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <Avatar src={record.avatar}>
+          <Avatar src={record.avatar || undefined}>
             {record.fullName?.charAt(0) || "U"}
           </Avatar>
           <div>
@@ -108,7 +86,7 @@ const UserManagement = () => {
         <Select
           value={record.role}
           style={{ width: 140 }}
-          onChange={(value: UserRole) => updateRole(record._id, value)}
+          onChange={(value: UserRole) => handleUpdateRole(record._id, value)}
         >
           {(Object.keys(ROLE_MAP) as UserRole[]).map((role) => (
             <Select.Option key={role} value={role}>
@@ -148,7 +126,7 @@ const UserManagement = () => {
                 return;
               }
 
-              updateStatus(record._id, checked ? "ACTIVE" : "BLOCKED");
+              handleUpdateStatus(record._id, checked ? "ACTIVE" : "BLOCKED");
             }}
           />
         );
@@ -159,7 +137,7 @@ const UserManagement = () => {
   return (
     <Table<User>
       rowKey="_id"
-      loading={loading}
+      loading={isLoading}
       columns={columns}
       dataSource={users}
     />

@@ -8,6 +8,7 @@ import { patientProfileApi } from "./services/patientProfile";
 import { scheduleApi } from "./services/scheduleApi";
 import { paymentApi } from "./services/paymentApi";
 import { uploadApi } from "./services/uploadApi";
+import { userApi } from "./services/userApi";
 export const store = configureStore({
   reducer: {
     //rtk query
@@ -19,6 +20,7 @@ export const store = configureStore({
     [appointmentApi.reducerPath]: appointmentApi.reducer,
     [paymentApi.reducerPath]: paymentApi.reducer,
     [uploadApi.reducerPath]: uploadApi.reducer,
+    [userApi.reducerPath]: userApi.reducer,
     // rtk
     auth: authSlice.reducer,
   },
@@ -31,7 +33,8 @@ export const store = configureStore({
       .concat(patientProfileApi.middleware)
       .concat(appointmentApi.middleware)
       .concat(paymentApi.middleware)
-      .concat(uploadApi.middleware),
+      .concat(uploadApi.middleware)
+      .concat(userApi.middleware),
   // quản lý cache và tag
 });
 
