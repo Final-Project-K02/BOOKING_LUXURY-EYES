@@ -12,7 +12,7 @@ import {
   getStoredUser,
   refreshAccessToken,
   setStoredAccessToken,
-} from "../../api/authToken";
+} from "./authToken";
 import { logout, setAuth } from "../features/authSlice";
 import type { User } from "../../types/User";
 

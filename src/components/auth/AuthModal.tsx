@@ -163,7 +163,6 @@ const AuthModal = ({ open, onClose, mode: initialMode }: AuthModalProps) => {
           <Form.Item
             name="fullName"
             label="Họ và tên"
-            normalize={(value) => value?.trim()}
             rules={getFullNameRules()}
           >
             <Input
