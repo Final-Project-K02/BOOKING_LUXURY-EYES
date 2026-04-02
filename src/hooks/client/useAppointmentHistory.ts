@@ -1,4 +1,4 @@
-import { message } from "antd";
+import { message as staticMessage, App as AntdApp } from "antd";
 import dayjs from "dayjs";
 import { useEffect, useMemo, useState } from "react";
 import { skipToken } from "@reduxjs/toolkit/query";
@@ -17,6 +17,18 @@ import {
 } from "../../components/client/AppointmentHistory/appointmentHelpers";
 
 export const useAppointmentHistory = () => {
+  // ===== HOOKS =====
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let message: any = staticMessage;
+  try {
+    const app = AntdApp.useApp();
+    if (app?.message) {
+      message = app.message;
+    }
+  } catch {
+    message = staticMessage;
+  }
+
   const [activeTab, setActiveTab] = useState<string>("all");
   const [selectedAppointment, setSelectedAppointment] =
     useState<Appointment | null>(null);

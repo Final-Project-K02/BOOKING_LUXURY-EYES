@@ -1,4 +1,4 @@
-import { message } from "antd";
+import { message as staticMessage, App as AntdApp } from "antd";
 import dayjs from "dayjs";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -41,6 +41,18 @@ const DEFAULT_PROGRESS: ProgressStats = {
 // ===== HOOK =====
 
 export const useDashboard = () => {
+  // ===== HOOKS =====
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let message: any = staticMessage;
+  try {
+    const app = AntdApp.useApp();
+    if (app?.message) {
+      message = app.message;
+    }
+  } catch {
+    message = staticMessage;
+  }
+
   const nav = useNavigate();
 
   // ===== RTK QUERY LAZY TRIGGERS =====

@@ -1,4 +1,4 @@
-import { Avatar, Select, Switch, Table, Tag, message } from "antd";
+import { Avatar, Select, Switch, Table, Tag, message as staticMessage, App as AntdApp } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useAppSelector } from "../../app/hook";
 import {
@@ -22,6 +22,18 @@ const STATUS_MAP: Record<UserStatus, { text: string; color: string }> = {
 };
 
 const UserManagement = () => {
+  // ===== HOOKS =====
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let message: any = staticMessage;
+  try {
+    const app = AntdApp.useApp();
+    if (app?.message) {
+      message = app.message;
+    }
+  } catch {
+    message = staticMessage;
+  }
+
   const { data, isLoading } = useGetUsersQuery();
   const [updateRole] = useUpdateUserRoleMutation();
   const [updateStatus] = useUpdateUserStatusMutation();

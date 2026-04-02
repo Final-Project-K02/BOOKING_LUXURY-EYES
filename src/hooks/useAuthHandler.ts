@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import { message } from "antd";
+import { message as staticMessage, App as AntdApp } from "antd";
 import type { LoginPayload, User } from "../types/User";
 import {
   useRegisterMutation,
@@ -14,6 +14,19 @@ import { setAuth, logout as logoutAction } from "../app/features/authSlice";
 import type { ForgotPasswordPayload } from "../types/Auth";
 
 export const useAuthHandler = () => {
+  // Try to get context-aware message, fallback to static if not available
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let message: any = staticMessage;
+  try {
+    const app = AntdApp.useApp();
+    if (app?.message) {
+      message = app.message;
+    }
+  } catch {
+    // If useApp fails, use static message as fallback
+    message = staticMessage;
+  }
+
   const nav = useNavigate();
   const dispatch = useDispatch();
 
@@ -71,7 +84,6 @@ export const useAuthHandler = () => {
     } catch (error) {
       const err = error as { data?: { message?: string } };
       message.error(err.data?.message || "Có lỗi xảy ra, vui lòng thử lại");
-      console.error("Login Error:", error);
       return false;
     }
   };

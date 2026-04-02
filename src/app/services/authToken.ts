@@ -1,4 +1,4 @@
-import { API_BASE_URL } from "../config";
+import { API_BASE_URL } from "../../config";
 
 const REFRESH_ENDPOINT = "auth/refresh-token";
 

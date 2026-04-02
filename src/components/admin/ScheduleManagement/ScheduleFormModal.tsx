@@ -121,7 +121,7 @@ const ScheduleFormModal = ({
       width={700}
       onCancel={onClose}
       onOk={() => form.submit()}
-      destroyOnClose
+      destroyOnHidden
       maskClosable={false}
     >
       <Form layout="vertical" form={form} onFinish={onSubmit}>

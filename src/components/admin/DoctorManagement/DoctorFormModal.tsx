@@ -25,7 +25,7 @@ const DoctorFormModal: React.FC<Props> = ({
 }) => {
   return (
     <Modal
-      destroyOnClose
+      destroyOnHidden
       open={open}
       title={editingDoctor ? "Cập nhật bác sĩ" : "Thêm bác sĩ"}
       onCancel={onCancel}
@@ -37,19 +37,6 @@ const DoctorFormModal: React.FC<Props> = ({
         layout="vertical"
         form={form}
         onFinish={onFinish}
-        onValuesChange={(changedValues, allValues) => {
-          if (
-            Object.prototype.hasOwnProperty.call(
-              changedValues,
-              "experience_year",
-            )
-          ) {
-            const year = Number(allValues.experience_year ?? 0);
-            if (!Number.isNaN(year)) {
-              form.setFieldValue("price", getPriceByExperience(year));
-            }
-          }
-        }}
         initialValues={{ price: getPriceByExperience(0) }}
       >
         <Form.Item
@@ -74,6 +61,14 @@ const DoctorFormModal: React.FC<Props> = ({
             {
               validator: async (_, value: string | undefined) => {
                 if (!value || !value.trim()) return Promise.resolve();
+                // Reject if it looks like a local file path
+                if (value.includes("fakepath") || /^[A-Z]:\\/.test(value)) {
+                  return Promise.reject(
+                    new Error(
+                      "Vui lòng upload ảnh thay vì chọn file cục bộ",
+                    ),
+                  );
+                }
                 try {
                   new URL(value.trim());
                   return Promise.resolve();
@@ -104,7 +99,25 @@ const DoctorFormModal: React.FC<Props> = ({
             </div>
 
             <div style={{ width: 90 }}>
-              {form.getFieldValue("avatar") ? (
+              {form.getFieldValue("avatar")?.includes("fakepath") ? (
+                <div
+                  style={{
+                    width: 90,
+                    height: 90,
+                    borderRadius: 8,
+                    background: "#f5f5f5",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#f00",
+                    fontSize: 10,
+                    textAlign: "center",
+                    padding: 4,
+                  }}
+                >
+                  Invalid File
+                </div>
+              ) : form.getFieldValue("avatar") ? (
                 <Image
                   src={form.getFieldValue("avatar")}
                   width={90}
@@ -141,7 +154,21 @@ const DoctorFormModal: React.FC<Props> = ({
             { type: "number", min: 0, message: "Số năm kinh nghiệm phải >= 0" },
           ]}
         >
-          <InputNumber style={{ width: "100%" }} min={0} />
+          <InputNumber
+            style={{ width: "100%" }}
+            min={0}
+            onChange={(val) => {
+              const year = Number(val ?? 0);
+              if (!Number.isNaN(year)) {
+                // Sử dụng setTimeout 0 để đẩy việc cập nhật ra khỏi vòng lặp render/event hiện tại
+                setTimeout(() => {
+                  form.setFieldsValue({
+                    price: getPriceByExperience(year),
+                  });
+                }, 0);
+              }
+            }}
+          />
         </Form.Item>
 
         <Form.Item

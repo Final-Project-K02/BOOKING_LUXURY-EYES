@@ -1,5 +1,5 @@
 import { LockOutlined } from "@ant-design/icons";
-import { Button, Form, Input, Modal, message } from "antd";
+import { Button, Form, Input, Modal, App as AntdApp, message as staticMessage } from "antd";
 import { useState } from "react";
 import { PASSWORD_REGEX } from "../../app/services/authApi";
 import { useAuthHandler } from "../../hooks/useAuthHandler";
@@ -15,6 +15,21 @@ const ResetPasswordModal = ({
   token,
   onClose,
 }: ResetPasswordModalProps) => {
+  // Try to get context-aware message, fallback to static if not available
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let message: any = staticMessage;
+  try {
+    const app = AntdApp.useApp();
+    if (app?.message) {
+      message = app.message;
+    }
+  } catch {
+    // If useApp fails, use static message as fallback
+    message = staticMessage;
+  }
+
+  // Form instance - warning in Strict Mode is expected but harmless
+  // Form is properly connected via form={form} prop below
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const { handleResetPassword } = useAuthHandler();
