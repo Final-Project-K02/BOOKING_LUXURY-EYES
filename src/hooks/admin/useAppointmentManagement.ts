@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Modal, message } from "antd";
+import { App as AntdApp, message as staticMessage, Modal as StaticModal } from "antd";
 import { useSearchParams } from "react-router-dom";
 import dayjs from "dayjs";
 import type { Dayjs } from "dayjs";
@@ -37,6 +37,22 @@ type FilterState = {
 // ===== HOOK =====
 
 export const useAppointmentManagement = () => {
+  // ===== HOOKS =====
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let modal: any = StaticModal;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let message: any = staticMessage;
+  
+  try {
+    const app = AntdApp.useApp();
+    if (app?.modal) modal = app.modal;
+    if (app?.message) message = app.message;
+  } catch {
+    // If useApp fails, use static fallbacks
+    modal = StaticModal;
+    message = staticMessage;
+  }
+
   // ===== STATE =====
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -278,7 +294,7 @@ export const useAppointmentManagement = () => {
       STATUS_MAP[record.status as AppointmentStatus]?.text || record.status;
     const nextLabel = STATUS_MAP[nextStatus]?.text || nextStatus;
 
-    Modal.confirm({
+    modal.confirm({
       title: "Xác nhận đổi trạng thái lịch",
       content: `Bạn có chắc muốn đổi từ "${currentLabel}" sang "${nextLabel}"?`,
       okText: "Xác nhận",
@@ -317,7 +333,7 @@ export const useAppointmentManagement = () => {
     const actionLabel =
       cancelOption === "NO_REFUND" ? "Hủy không hoàn tiền" : "Hủy và hoàn tiền";
 
-    Modal.confirm({
+    modal.confirm({
       title: "Xác nhận thao tác hủy lịch",
       content: requiresRefundChoice(appointmentToCancel)
         ? `Bạn có chắc muốn ${actionLabel.toLowerCase()} cho lịch hẹn này không?`
@@ -361,7 +377,7 @@ export const useAppointmentManagement = () => {
     const nextLabel =
       PAYMENT_STATUS_MAP[nextPaymentStatus]?.text || nextPaymentStatus;
 
-    Modal.confirm({
+    modal.confirm({
       title: "Xác nhận cập nhật hoàn tiền",
       content: `Bạn có chắc muốn đổi trạng thái thanh toán từ "${currentLabel}" sang "${nextLabel}"?`,
       okText: "Xác nhận",

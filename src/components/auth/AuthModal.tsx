@@ -50,6 +50,8 @@ const getConfirmPasswordRules = () => [
 
 // ===== COMPONENT =====
 const AuthModal = ({ open, onClose, mode: initialMode }: AuthModalProps) => {
+  // Form instance - warning in Strict Mode is expected but harmless
+  // Form is properly connected via form={form} prop below
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [currentMode, setCurrentMode] = useState<AuthMode>(initialMode);

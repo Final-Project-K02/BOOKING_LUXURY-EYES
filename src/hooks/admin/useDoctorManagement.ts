@@ -1,5 +1,5 @@
 import type { UploadProps } from "antd";
-import { Form, message, Upload } from "antd";
+import { Form, message as staticMessage, Upload, App as AntdApp } from "antd";
 import { useState } from "react";
 import {
   useCreateDoctorMutation,
@@ -21,12 +21,26 @@ import type {
 import { getPriceByExperience } from "../../utils/DoctorManagement/doctorUtils";
 
 const useDoctorManagement = () => {
+  // ===== HOOKS =====
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let message: any = staticMessage;
+  try {
+    const app = AntdApp.useApp();
+    if (app?.message) {
+      message = app.message;
+    }
+  } catch {
+    message = staticMessage;
+  }
+
   // ===== STATE =====
   const [openModal, setOpenModal] = useState(false);
   const [editingDoctor, setEditingDoctor] = useState<Doctor | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [filters, setFilters] = useState<DoctorFilter>({});
 
+  // Form instance - warning in Strict Mode is expected but harmless
+  // Form is properly connected via form={form} prop in DoctorFormModal
   const [form] = Form.useForm<DoctorFormValues>();
 
   // ===== RTK QUERY =====

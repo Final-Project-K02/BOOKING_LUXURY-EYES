@@ -1,11 +1,11 @@
 // import "./App.css";
 import { useEffect, useState } from "react";
+import { App as AntApp, message } from "antd";
 import { useAppDispatch } from "./app/hook";
 import AppRoute from "./routes";
 import { setAuth } from "./app/features/authSlice";
-import { message } from "antd";
 
-function App() {
+function AppContent() {
   const dispatch = useAppDispatch();
   const [isInitialized, setIsInitialized] = useState(false);
 
@@ -36,10 +36,14 @@ function App() {
     return <div>Loading...</div>;
   }
 
+  return <AppRoute />;
+}
+
+function App() {
   return (
-    <>
-      <AppRoute />
-    </>
+    <AntApp>
+      <AppContent />
+    </AntApp>
   );
 }
 

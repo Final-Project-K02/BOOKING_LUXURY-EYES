@@ -1,6 +1,6 @@
 import { skipToken } from "@reduxjs/toolkit/query";
 import type { FetchBaseQueryError } from "@reduxjs/toolkit/query";
-import { message } from "antd";
+import { message as staticMessage, App as AntdApp } from "antd";
 import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
 import { useEffect, useMemo, useState } from "react";
@@ -40,6 +40,18 @@ import { buildSlotsWithState } from "../../utils/BookingAppointment";
  * - Chọn bác sĩ → chọn slot → xác nhận & thanh toán
  */
 export const useBooking = () => {
+  // ===== HOOKS =====
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let message: any = staticMessage;
+  try {
+    const app = AntdApp.useApp();
+    if (app?.message) {
+      message = app.message;
+    }
+  } catch {
+    message = staticMessage;
+  }
+
   const nav = useNavigate();
   const { user, isAuthenticated } = useAppSelector((state) => state.auth);
 

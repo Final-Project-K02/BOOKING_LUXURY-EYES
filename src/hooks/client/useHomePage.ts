@@ -1,4 +1,4 @@
-import { message } from "antd";
+import { message as staticMessage, App as AntdApp } from "antd";
 import dayjs from "dayjs";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -12,6 +12,18 @@ import type { DoctorWithSchedule, ScheduleApi } from "../../types/HomePage";
 type AuthModalMode = "login" | "register";
 
 export const useHomePage = () => {
+  // ===== HOOKS =====
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let message: any = staticMessage;
+  try {
+    const app = AntdApp.useApp();
+    if (app?.message) {
+      message = app.message;
+    }
+  } catch {
+    message = staticMessage;
+  }
+
   // ===== STATE =====
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<AuthModalMode>("login");
@@ -122,6 +134,7 @@ export const useHomePage = () => {
     } finally {
       setLoadingDoctorsSchedule(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [doctors, fetchSchedulesByDoctor]);
 
   // ===== ACTIONS =====

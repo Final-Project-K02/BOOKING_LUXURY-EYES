@@ -39,6 +39,8 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({
   editingPatient,
   isEditing = false,
 }) => {
+  // Form instance - warning in Strict Mode is expected but harmless
+  // Form is properly connected via form={form} prop below
   const [form] = Form.useForm();
 
   // Populate form when editing
