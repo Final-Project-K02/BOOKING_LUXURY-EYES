@@ -1,62 +1,59 @@
 import {
   ClockCircleOutlined,
   EnvironmentOutlined,
-  MenuOutlined,
   PhoneOutlined,
   UserOutlined,
 } from "@ant-design/icons";
 import type { MenuProps } from "antd";
-import { Button, Drawer, Dropdown, Menu, message } from "antd";
-import { Link, useNavigate } from "react-router-dom";
+import { Button, Drawer, Dropdown, Menu } from "antd";
+import { Link } from "react-router-dom";
 import { useState } from "react";
 import logo from "../assets/imgs/logoEye.png";
-import { useAppDispatch } from "../app/hook";
-import { logout } from "../app/features/authSlice";
+import AuthModal from "../components/auth/AuthModal";
+import { useAuthHandler } from "../hooks/useAuthHandler";
+import { useAppSelector } from "../app/hook";
 
 const HeaderClient = () => {
   const [drawerVisible, setDrawerVisible] = useState(false);
-  const navigate = useNavigate();
-  const dispatch = useAppDispatch();
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<"login" | "register">(
+    "login",
+  );
+  const { handleLogout } = useAuthHandler();
 
-  const user = JSON.parse(localStorage.getItem("user") || "null");
-  const isLoggedIn = !!user;
-  const handleLogout = () => {
-    dispatch(logout());
+  const { user, isAuthenticated, accessToken } = useAppSelector(
+    (state) => state.auth,
+  );
+  const isLoggedIn = Boolean(user && isAuthenticated && accessToken);
 
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("user");
+  const menuItems: MenuProps["items"] = [];
 
-    message.success("Đăng xuất thành công!");
-    navigate("/auth/login");
+  const openAuthModal = (mode: "login" | "register") => {
+    setAuthModalMode(mode);
+    setAuthModalOpen(true);
   };
-  const menuItems: MenuProps["items"] = [
-    // { key: "home", label: <Link to="/">Trang chủ</Link> },
-    // { key: "about", label: <Link to="/about">Giới thiệu</Link> },
-    // { key: "services", label: <Link to="/services">Dịch vụ</Link> },
-    // { key: "departments", label: <Link to="/departments">Chuyên khoa</Link> },
-    // { key: "doctors", label: <Link to="/doctors">Bác sĩ</Link> },
-    // { key: "news", label: <Link to="/news">Tin tức</Link> },
-    // { key: "contact", label: <Link to="/contact">Liên hệ</Link> },
+
+  const guestMenu: MenuProps["items"] = [
+    {
+      key: "login",
+      label: "Đăng nhập",
+      onClick: () => openAuthModal("login"),
+    },
+    {
+      key: "register",
+      label: "Đăng ký",
+      onClick: () => openAuthModal("register"),
+    },
   ];
 
   const loggedMenu: MenuProps["items"] = [
-    // {
-    //   key: "profile",
-    //   label: <Link to="/profile">Thông tin cá nhân</Link>,
-    // },
     {
       key: "logout",
       label: <span style={{ color: "red" }}>Đăng xuất</span>,
       onClick: () => {
-        handleLogout();
-        navigate("/auth/login");
+        void handleLogout({ showMessage: true, redirect: "/" });
       },
     },
-  ];
-
-  const guestMenu: MenuProps["items"] = [
-    { key: "login", label: <Link to="/auth/login">Đăng nhập</Link> },
-    { key: "register", label: <Link to="/auth/register">Đăng ký</Link> },
   ];
 
   return (
@@ -94,28 +91,45 @@ const HeaderClient = () => {
               />
             </nav>
 
-            <div className="flex items-center gap-3">
-              <Dropdown
-                menu={{ items: isLoggedIn ? loggedMenu : guestMenu }}
-                placement="bottomRight"
-                arrow
-                className="hidden md:block"
-              >
-                <Button icon={<UserOutlined />}>
-                  {isLoggedIn ? user.fullName : "Tài khoản"}
-                </Button>
-              </Dropdown>
-
-              <Button
-                icon={<MenuOutlined />}
-                className="lg:hidden"
-                onClick={() => setDrawerVisible(true)}
-              />
+            {/* Desktop Menu */}
+            <div className="hidden md:block">
+              {!isLoggedIn ? (
+                <Dropdown
+                  menu={{
+                    items: guestMenu,
+                  }}
+                  placement="bottomRight"
+                  arrow
+                >
+                  <Button icon={<UserOutlined />}>Tài khoản</Button>
+                </Dropdown>
+              ) : (
+                <Dropdown
+                  menu={{
+                    items: loggedMenu,
+                  }}
+                  placement="bottomRight"
+                  arrow
+                >
+                  <Button icon={<UserOutlined />}>
+                    {user?.fullName || "Tài khoản"}
+                  </Button>
+                </Dropdown>
+              )}
             </div>
+
+            {/* Mobile Menu Icon */}
+            <Button
+              type="text"
+              icon={<UserOutlined />}
+              className="md:hidden"
+              onClick={() => setDrawerVisible(true)}
+            />
           </div>
         </div>
       </header>
 
+      {/* Mobile Drawer */}
       <Drawer
         title="Menu"
         placement="right"
@@ -127,14 +141,26 @@ const HeaderClient = () => {
         <div className="mt-4 px-4 space-y-2">
           {!isLoggedIn ? (
             <>
-              <Link to="/auth/login">
-                <Button type="primary" block>
-                  Đăng nhập
-                </Button>
-              </Link>
-              <Link to="/auth/register">
-                <Button block>Đăng ký</Button>
-              </Link>
+              <Button
+                type="primary"
+                block
+                onClick={() => {
+                  openAuthModal("login");
+                  setDrawerVisible(false);
+                }}
+              >
+                Đăng nhập
+              </Button>
+
+              <Button
+                block
+                onClick={() => {
+                  openAuthModal("register");
+                  setDrawerVisible(false);
+                }}
+              >
+                Đăng ký
+              </Button>
             </>
           ) : (
             <>
@@ -146,8 +172,8 @@ const HeaderClient = () => {
                 danger
                 block
                 onClick={() => {
-                  handleLogout();
-                  navigate("/auth/login");
+                  void handleLogout({ showMessage: true, redirect: "/" });
+                  setDrawerVisible(false);
                 }}
               >
                 Đăng xuất
@@ -156,6 +182,13 @@ const HeaderClient = () => {
           )}
         </div>
       </Drawer>
+
+      {/* Auth Modal */}
+      <AuthModal
+        open={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        mode={authModalMode}
+      />
     </>
   );
 };

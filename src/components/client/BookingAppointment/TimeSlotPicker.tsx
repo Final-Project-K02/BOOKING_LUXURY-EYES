@@ -1,12 +1,12 @@
 import { CloudOutlined, SunOutlined } from "@ant-design/icons";
 import { Button, Tooltip } from "antd";
-import { getDayLabel } from "../utils/dateUtils";
+import { getDayLabel } from "../../../utils/dateUtils";
 import type {
   DoctorSchedule,
   SelectedSchedule,
   TimeSlot,
   TimeSlotUI,
-} from "../types/Schedule";
+} from "../../../types/Schedule";
 import dayjs from "dayjs";
 
 interface TimeSlotPickerProps {
@@ -28,7 +28,7 @@ const TimeSlotPicker = ({
 
   // SẮP XẾP THEO NGÀY TĂNG DẦN
   validTimeSlots = validTimeSlots.sort((a, b) =>
-    dayjs(a.date).diff(dayjs(b.date))
+    dayjs(a.date).diff(dayjs(b.date)),
   );
 
   // Tạo danh sách các ngày DUY NHẤT
@@ -39,7 +39,7 @@ const TimeSlotPicker = ({
         if (!map.has(key)) map.set(key, slot); // giữ slot đầu tiên của ngày đó
         return map;
       }, new Map<string, TimeSlot>())
-      .values()
+      .values(),
   );
 
   // Xác định ngày được chọn (dựa trên index trong uniqueDateSlots)
@@ -61,7 +61,7 @@ const TimeSlotPicker = ({
             }
             return map;
           }, new Map<string, TimeSlot>())
-          .values() // values() trả về Iterator
+          .values(), // values() trả về Iterator
       )
         // Sắp xếp giờ tăng dần
         .sort((a, b) => a.time.localeCompare(b.time))
@@ -69,11 +69,11 @@ const TimeSlotPicker = ({
 
   // Chia sáng / chiều
   const morningSlots = slotsOfSelectedDay.filter(
-    (slot) => parseInt(slot.time.split(":")[0]) < 12
+    (slot) => parseInt(slot.time.split(":")[0]) < 12,
   );
 
   const afternoonSlots = slotsOfSelectedDay.filter(
-    (slot) => parseInt(slot.time.split(":")[0]) >= 12
+    (slot) => parseInt(slot.time.split(":")[0]) >= 12,
   );
   return (
     <div>
@@ -91,7 +91,7 @@ const TimeSlotPicker = ({
               });
 
               const isSelected = selectedDay?.isSame(
-                dayjs(slot.date).startOf("day")
+                dayjs(slot.date).startOf("day"),
               );
               return (
                 <button

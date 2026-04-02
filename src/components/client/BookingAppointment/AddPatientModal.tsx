@@ -5,11 +5,16 @@ import {
   UserOutlined,
 } from "@ant-design/icons";
 import { DatePicker, Form, Input, Modal, Radio } from "antd";
-import React from "react";
+import React, { useEffect } from "react";
+import dayjs from "dayjs";
+import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
+import type { CreatePatientInput } from "../../../types/PatientProfile";
+
+dayjs.extend(isSameOrBefore);
 
 export interface PatientInput {
-  name: string;
-  dateOfBirth: string;
+  fullName: string;
+  dateOfBirth?: dayjs.Dayjs | string | null;
   gender: string;
   identityCard: string;
   email: string;
@@ -20,8 +25,10 @@ export interface PatientInput {
 interface AddPatientModalProps {
   visible: boolean;
   onCancel: () => void;
-  onSubmit: (data: PatientInput) => void;
+  onSubmit: (data: CreatePatientInput) => Promise<void>;
   confirmLoading?: boolean;
+  editingPatient?: (PatientInput & { _id: string }) | null;
+  isEditing?: boolean;
 }
 
 const AddPatientModal: React.FC<AddPatientModalProps> = ({
@@ -29,47 +36,105 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({
   onCancel,
   onSubmit,
   confirmLoading,
+  editingPatient,
+  isEditing = false,
 }) => {
+  // Form instance - warning in Strict Mode is expected but harmless
+  // Form is properly connected via form={form} prop below
   const [form] = Form.useForm();
+
+  // Populate form when editing
+  useEffect(() => {
+    if (!visible) return;
+
+    if (isEditing && editingPatient) {
+      form.setFieldsValue({
+        fullName: editingPatient.fullName,
+        dateOfBirth: editingPatient.dateOfBirth
+          ? dayjs(editingPatient.dateOfBirth)
+          : null,
+        gender: editingPatient.gender,
+        identityCard: editingPatient.identityCard,
+        email: editingPatient.email,
+        phone: editingPatient.phone,
+        address: editingPatient.address,
+      });
+    } else {
+      form.resetFields();
+    }
+  }, [visible, editingPatient, isEditing, form]);
+
   const handleOk = async () => {
     try {
       const values = await form.validateFields();
-      onSubmit(values);
+
+      onSubmit({
+        ...values,
+        dateOfBirth: values.dateOfBirth
+          ? values.dateOfBirth.format("YYYY-MM-DD")
+          : undefined,
+      });
+
       form.resetFields();
-    } catch (error) {
-      console.log("Validation failed:", error);
+    } catch (err) {
+      console.log("Validation failed:", err);
     }
+  };
+
+  const handleCancel = () => {
+    form.resetFields();
+    onCancel();
+  };
+
+  const disableFutureDate = (current: dayjs.Dayjs) => {
+    return current && current > dayjs().endOf("day");
   };
 
   return (
     <Modal
-      title="Thêm mới người bệnh"
+      destroyOnHidden
+      title={
+        isEditing ? "Chỉnh sửa thông tin người bệnh" : "Thêm mới người bệnh"
+      }
       open={visible}
-      onCancel={onCancel}
+      onCancel={handleCancel}
       confirmLoading={confirmLoading}
-      onOk={handleOk} // <-- chạy validate
-      okText="Thêm người bệnh"
+      onOk={handleOk}
+      okText={isEditing ? "Cập nhật" : "Thêm người bệnh"}
       cancelText="Hủy"
       width={800}
     >
       <Form form={form} layout="vertical">
-        {" "}
-        {/* <-- gắn form */}
         <div className="grid md:grid-cols-2 gap-4">
           {/* Họ và tên */}
           <Form.Item
             name="fullName"
             label="Họ và tên"
-            normalize={(value) => value?.trim()}
             rules={[
               { required: true, message: "Vui lòng nhập họ và tên" },
-              { min: 3, message: "Tối thiểu phải có 3 ký tự" },
+              {
+                validator(_, value) {
+                  if (!value) {
+                    return Promise.resolve();
+                  }
+                  const trimmed = value.trim();
+                  if (trimmed.length < 3) {
+                    return Promise.reject(
+                      new Error("Tối thiểu phải có 3 ký tự"),
+                    );
+                  }
+                  return Promise.resolve();
+                },
+              },
             ]}
           >
             <Input
               size="large"
               placeholder="Nguyễn Văn A (bắt buộc)"
               prefix={<UserOutlined />}
+              onBlur={(e) => {
+                e.target.value = e.target.value.trim();
+              }}
             />
           </Form.Item>
 
@@ -77,9 +142,27 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({
           <Form.Item
             name="dateOfBirth"
             label="Ngày sinh"
-            rules={[{ required: true, message: "Vui lòng chọn ngày sinh" }]}
+            rules={[
+              { required: true, message: "Vui lòng chọn ngày sinh" },
+              {
+                validator: (_, value) => {
+                  if (!value || dayjs(value).isSameOrBefore(dayjs(), "day")) {
+                    return Promise.resolve();
+                  }
+
+                  return Promise.reject(
+                    new Error("Ngày sinh không được lớn hơn ngày hiện tại"),
+                  );
+                },
+              },
+            ]}
           >
-            <DatePicker size="large" className="w-full" format="DD/MM/YYYY" />
+            <DatePicker
+              size="large"
+              className="w-full"
+              format="DD/MM/YYYY"
+              disabledDate={disableFutureDate}
+            />
           </Form.Item>
 
           {/* Giới tính */}
@@ -101,7 +184,7 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({
             label="CCCD/CMND"
             getValueFromEvent={(e) => e.target.value.replace(/\D/g, "")}
             rules={[
-              { required: true, message: "Vui lòng nhập số căn cước công dân" },
+              // { required: true, message: "Vui lòng nhập số căn cước công dân" },
               {
                 pattern: /^(\d{9}|\d{12})$/,
                 message: "CMND/CCCD phải gồm 9 hoặc 12 chữ số",

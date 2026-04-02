@@ -1,6 +1,6 @@
 export interface CreatePatientInput {
-  name: string;
-  dateOfBirth: string;
+  fullName: string;
+  dateOfBirth?: string;
   gender: string;
   identityCard: string;
   email: string;

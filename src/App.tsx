@@ -1,11 +1,13 @@
 // import "./App.css";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { App as AntApp, message } from "antd";
 import { useAppDispatch } from "./app/hook";
 import AppRoute from "./routes";
 import { setAuth } from "./app/features/authSlice";
 
-function App() {
+function AppContent() {
   const dispatch = useAppDispatch();
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
@@ -16,15 +18,32 @@ function App() {
         setAuth({
           accessToken: token,
           user: JSON.parse(user),
-        })
+        }),
       );
     }
+
+    if (sessionStorage.getItem("accountLockedNotice") === "1") {
+      sessionStorage.removeItem("accountLockedNotice");
+      message.warning(
+        "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.",
+      );
+    }
+
+    setIsInitialized(true);
   }, [dispatch]);
 
+  if (!isInitialized) {
+    return <div>Loading...</div>;
+  }
+
+  return <AppRoute />;
+}
+
+function App() {
   return (
-    <>
-      <AppRoute />
-    </>
+    <AntApp>
+      <AppContent />
+    </AntApp>
   );
 }
 

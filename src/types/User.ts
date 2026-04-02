@@ -8,6 +8,7 @@ export interface User {
   identityCard: string;
   phone: string;
   address: string;
+  role: "admin" | "user";
 }
 
 export interface LoginPayload {

@@ -1,6 +1,6 @@
 import { UserOutlined } from "@ant-design/icons";
 import { Avatar, Button, Card } from "antd";
-import type { Doctor } from "../types/Doctor";
+import type { Doctor } from "../../../types/Doctor";
 
 interface DoctorListProps {
   doctors: Doctor[];
@@ -13,12 +13,14 @@ const DoctorList = ({
   isFetching,
   handleDoctorSelect,
 }: DoctorListProps) => {
+  const formatPrice = (value: number) => value.toLocaleString("vi-VN");
+
   return (
     <div>
       <div className="space-y-3">
         {isFetching && (
           <div className="absolute top-0 right-0 p-2 text-sm text-gray-500">
-            Updating...
+            Đang cập nhật
           </div>
         )}
 
@@ -31,7 +33,11 @@ const DoctorList = ({
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 flex-1">
-                  <Avatar size={48} icon={<UserOutlined />} />
+                  <Avatar
+                    size={48}
+                    src={doctor.avatar}
+                    icon={!doctor.avatar && <UserOutlined />}
+                  />
                   <div>
                     <h3 className="font-semibold text-gray-800">
                       {doctor.name}
@@ -45,7 +51,7 @@ const DoctorList = ({
                   <div className="text-right">
                     <p className="text-xs text-gray-500">Giá khám:</p>
                     <p className="text-lg font-bold text-orange-500">
-                      {doctor.price} đ
+                      {formatPrice(Number(doctor.price) || 0)} đ
                     </p>
                   </div>
                   <Button
