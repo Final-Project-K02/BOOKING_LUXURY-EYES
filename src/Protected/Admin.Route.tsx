@@ -1,9 +1,6 @@
 import { Navigate } from "react-router-dom";
 import type { ReactNode } from "react";
-
-interface User {
-  role?: "admin" | "user";
-}
+import type { User } from "../types/User";
 
 export default function AdminRoute({ children }: { children: ReactNode }) {
   const token = localStorage.getItem("accessToken");

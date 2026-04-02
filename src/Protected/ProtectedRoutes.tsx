@@ -1,9 +1,6 @@
 import { Navigate } from "react-router-dom";
 import type { ReactNode } from "react";
-
-export interface User {
-  role?: "admin" | "user";
-}
+import type { User } from "../types/User";
 
 export interface AuthRouteProps {
   children: ReactNode;
